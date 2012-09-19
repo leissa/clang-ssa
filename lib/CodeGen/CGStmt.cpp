@@ -409,6 +409,8 @@ void CodeGenFunction::EmitIfStmt(const IfStmt &S) {
   if (S.getElse())
     ElseBlock = createBasicBlock("if.else");
   EmitBranchOnBoolExpr(S.getCond(), ThenBlock, ElseBlock);
+  setMature(ThenBlock);
+  setMature(ElseBlock);
 
   // Emit the 'then' code.
   EmitBlock(ThenBlock); 
@@ -432,6 +434,7 @@ void CodeGenFunction::EmitIfStmt(const IfStmt &S) {
     if (getDebugInfo())
       Builder.SetCurrentDebugLocation(llvm::DebugLoc());
     EmitBranch(ContBlock);
+    setMature(ContBlock);
   }
 
   // Emit the continuation block for code after the if.

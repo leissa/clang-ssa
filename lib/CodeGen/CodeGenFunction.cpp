@@ -291,6 +291,7 @@ void CodeGenFunction::StartFunction(GlobalDecl GD, QualType RetTy,
   }
 
   llvm::BasicBlock *EntryBB = createBasicBlock("entry", CurFn);
+  setMature(EntryBB);
 
   // Create a marker to make it easy to insert allocas into the entryblock
   // later.  Don't create this with the builder, because we don't want it
@@ -1163,15 +1164,23 @@ llvm::Value* CodeGenFunction::getValue(llvm::BasicBlock* BB, llvm::Value* Var) {
 
   llvm::Type* Type = getVarType(Var);
 
-  if (llvm::pred_begin(BB) == llvm::pred_end(BB))
-    setValue(BB, Var, llvm::UndefValue::get(Type));
+  if (llvm::pred_begin(BB) == llvm::pred_end(BB)) {
+    llvm::Value* result = llvm::UndefValue::get(Type);
+    setValue(BB, Var, result);
+    return result;
+  }
 
   bool mature = Mature.find(BB) != Mature.end();
   llvm::BasicBlock* single_pred = BB->getSinglePredecessor();
 
   // not mature or more than one predecessor
   if (!mature || !single_pred) {
-    llvm::PHINode* Phi = llvm::PHINode::Create(Type, 0, Var->getName(), BB->begin());
+    llvm::PHINode* Phi; 
+    if (BB->empty())
+      Phi = llvm::PHINode::Create(Type, 0, Var->getName(), BB);
+    else
+      Phi = llvm::PHINode::Create(Type, 0, Var->getName(), BB->begin());
+
     setValue(BB, Var, Phi);
 
     if (mature)
