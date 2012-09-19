@@ -856,9 +856,12 @@ CodeGenFunction::tryEmitAsConstant(DeclRefExpr *refExpr) {
 }
 
 llvm::Value *CodeGenFunction::EmitLoadOfScalar(LValue lvalue) {
-  return EmitLoadOfScalar(lvalue.getAddress(), lvalue.isVolatile(),
-                          lvalue.getAlignment().getQuantity(),
-                          lvalue.getType(), lvalue.getTBAAInfo());
+  if (lvalue.isSimple())
+    return getValue(lvalue.getAddress());
+  else
+    return EmitLoadOfScalar(lvalue.getAddress(), lvalue.isVolatile(),
+                            lvalue.getAlignment().getQuantity(),
+                            lvalue.getType(), lvalue.getTBAAInfo());
 }
 
 static bool hasBooleanRepresentation(QualType Ty) {
@@ -975,9 +978,13 @@ void CodeGenFunction::EmitStoreOfScalar(llvm::Value *Value, llvm::Value *Addr,
 
 void CodeGenFunction::EmitStoreOfScalar(llvm::Value *value, LValue lvalue,
     bool isInit) {
-  EmitStoreOfScalar(value, lvalue.getAddress(), lvalue.isVolatile(),
-                    lvalue.getAlignment().getQuantity(), lvalue.getType(),
-                    lvalue.getTBAAInfo(), isInit);
+
+  if (lvalue.isSimple())
+    setValue(lvalue.getAddress(), value);
+  else
+    EmitStoreOfScalar(value, lvalue.getAddress(), lvalue.isVolatile(),
+                      lvalue.getAlignment().getQuantity(), lvalue.getType(),
+                      lvalue.getTBAAInfo(), isInit);
 }
 
 /// EmitLoadOfLValue - Given an expression that represents a value lvalue, this
