@@ -491,7 +491,10 @@ void CodeGenFunction::EmitWhileStmt(const WhileStmt &S) {
       EmitBlock(ExitBlock);
       EmitBranchThroughCleanup(LoopExit);
     }
+  } else {
+    EmitBranch(LoopBody);
   }
+  setMature(LoopBody);
  
   // Emit the loop body.  We have to emit this in a cleanup scope
   // because it might be a singleton DeclStmt.
@@ -508,8 +511,10 @@ void CodeGenFunction::EmitWhileStmt(const WhileStmt &S) {
 
   // Branch to the loop header again.
   EmitBranch(LoopHeader.getBlock());
+  setMature(LoopHeader.getBlock());
 
   // Emit the exit block.
+  setMature(LoopExit.getBlock());
   EmitBlock(LoopExit.getBlock(), true);
 
   // The LoopHeader typically is just a branch if we skipped emitting
