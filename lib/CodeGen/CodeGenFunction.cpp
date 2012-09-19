@@ -1164,12 +1164,6 @@ llvm::Value* CodeGenFunction::getValue(llvm::BasicBlock* BB, llvm::Value* Var) {
 
   llvm::Type* Type = getVarType(Var);
 
-  if (llvm::pred_begin(BB) == llvm::pred_end(BB)) {
-    llvm::Value* result = llvm::UndefValue::get(Type);
-    setValue(BB, Var, result);
-    return result;
-  }
-
   bool mature = Mature.find(BB) != Mature.end();
   llvm::BasicBlock* single_pred = BB->getSinglePredecessor();
 
@@ -1212,16 +1206,15 @@ llvm::Value* CodeGenFunction::fixPHI(llvm::BasicBlock* BB, llvm::Value* Var, llv
     llvm::Value*      val  = getValue(pred, Var);
     Phi->addIncoming(val, pred);
 
-    if (val == Phi)
+    if (Phi == val || same == val)
         continue;
-    if (same == val)
-        continue;
-    if (!same) {
+
+    if (same)
+      same = (llvm::Value*)-1;
+    else
       same = val;
-      continue;
-    }
-    same = (llvm::Value*)-1;
   }
+
   if (same == (llvm::Value*)-1)
     return Phi;
   if (!same)
