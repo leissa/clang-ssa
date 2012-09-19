@@ -1184,11 +1184,9 @@ llvm::Value* CodeGenFunction::getValue(llvm::BasicBlock* BB, llvm::Value* Var) {
     setValue(BB, Var, Phi);
 
     if (mature)
-      fixPHI(BB, Var, Phi);
+      return fixPHI(BB, Var, Phi);
     else
-      Todos[BB][Var] = Phi;
-
-    return Phi;
+      return Todos[BB][Var] = Phi;
   }
 
   llvm::Value* result = getValue(single_pred, Var);
@@ -1206,9 +1204,30 @@ void CodeGenFunction::setMature(llvm::BasicBlock* BB) {
       fixPHI(BB, i->first, i->second);
 }
 
-void CodeGenFunction::fixPHI(llvm::BasicBlock* BB, llvm::Value* Var, llvm::PHINode* Phi) {
+llvm::Value* CodeGenFunction::fixPHI(llvm::BasicBlock* BB, llvm::Value* Var, llvm::PHINode* Phi) {
+  llvm::Value* same = 0;
+
   for (llvm::pred_iterator i = llvm::pred_begin(BB), e = llvm::pred_end(BB); i != e; ++i) {
     llvm::BasicBlock* pred = *i;
-    Phi->addIncoming(getValue(pred, Var), pred);
+    llvm::Value*      val  = getValue(pred, Var);
+    Phi->addIncoming(val, pred);
+
+    if (val == Phi)
+        continue;
+    if (same == val)
+        continue;
+    if (!same) {
+      same = val;
+      continue;
+    }
+    same = (llvm::Value*)-1;
   }
+  if (same == (llvm::Value*)-1)
+    return Phi;
+  if (!same)
+    same = llvm::UndefValue::get(getVarType(Var));
+
+  Phi->replaceAllUsesWith(same);
+  Phi->eraseFromParent();
+  return same;
 }

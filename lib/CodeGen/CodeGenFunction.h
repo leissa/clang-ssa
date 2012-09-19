@@ -586,7 +586,7 @@ public:
   llvm::Value* getValue(llvm::Value* Var) { 
     return getValue(Builder.GetInsertBlock(), Var);
   }
-  void fixPHI(llvm::BasicBlock* BB, llvm::Value* Var, llvm::PHINode* Phi);
+  llvm::Value* fixPHI(llvm::BasicBlock* BB, llvm::Value* Var, llvm::PHINode* Phi);
 
   typedef std::pair<llvm::Value *, llvm::Value *> ComplexPairTy;
   CGBuilderTy Builder;
