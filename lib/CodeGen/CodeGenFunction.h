@@ -23,6 +23,7 @@
 #include "clang/Basic/TargetInfo.h"
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/DenseMap.h"
+#include "llvm/ADT/DenseSet.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/Support/ValueHandle.h"
 #include "llvm/Support/Debug.h"
@@ -560,6 +561,31 @@ public:
 
   CodeGenModule &CGM;  // Per-module state.
   const TargetInfo &Target;
+
+  typedef llvm::DenseMap<llvm::Value*, llvm::TrackingVH<llvm::Value> > Var2Val;
+  typedef llvm::DenseMap<llvm::BasicBlock*, Var2Val> BB2Var2Val;
+  BB2Var2Val Values;
+
+  typedef llvm::DenseMap<llvm::Value*, llvm::PHINode*> Var2Phi;
+  typedef llvm::DenseMap<llvm::BasicBlock*, Var2Phi> BB2Var2Phi;
+  BB2Var2Phi Todos;
+
+  typedef llvm::DenseSet<llvm::BasicBlock*> BBs;
+  BBs Mature;
+
+  void setValue(llvm::BasicBlock* BB, llvm::Value* Var, llvm::Value* NewVal) {
+    Values[BB][Var] = NewVal;
+  }
+  void setValue(llvm::Value* Var, llvm::Value* NewVal) {
+    setValue(Builder.GetInsertBlock(), Var, NewVal);
+  }
+  void setMature(llvm::BasicBlock* BB);
+
+  llvm::Value* getValue(llvm::BasicBlock* BB, llvm::Value* Var);
+  llvm::Value* getValue(llvm::Value* Var) { 
+    return getValue(Builder.GetInsertBlock(), Var);
+  }
+  void fixPHI(llvm::BasicBlock* BB, llvm::Value* Var, llvm::PHINode* Phi);
 
   typedef std::pair<llvm::Value *, llvm::Value *> ComplexPairTy;
   CGBuilderTy Builder;

@@ -23,6 +23,7 @@
 #include "clang/AST/StmtCXX.h"
 #include "clang/Frontend/CodeGenOptions.h"
 #include "llvm/Intrinsics.h"
+#include "llvm/Support/CFG.h"
 #include "llvm/Support/MDBuilder.h"
 #include "llvm/Target/TargetData.h"
 using namespace clang;
@@ -1146,4 +1147,58 @@ llvm::Value *CodeGenFunction::EmitFieldAnnotations(const FieldDecl *D,
   }
 
   return V;
+}
+
+static llvm::Type* getVarType(llvm::Value* Var) {
+ return dyn_cast<llvm::PointerType>(Var->getType())->getElementType();
+}
+
+llvm::Value* CodeGenFunction::getValue(llvm::BasicBlock* BB, llvm::Value* Var) {
+  Var2Val& Vars = Values[BB];
+  Var2Val::iterator i = Vars.find(Var);
+
+  if (i != Vars.end())
+    return i->second;
+
+  llvm::Type* Type = getVarType(Var);
+
+  if (llvm::pred_begin(BB) == llvm::pred_end(BB))
+    setValue(BB, Var, llvm::UndefValue::get(Type));
+
+  bool mature = Mature.find(BB) != Mature.end();
+  llvm::BasicBlock* single_pred = BB->getSinglePredecessor();
+
+  // not mature or more than one predecessor
+  if (!mature || !single_pred) {
+    llvm::PHINode* Phi = llvm::PHINode::Create(Type, 0, Var->getName(), BB->begin());
+    setValue(BB, Var, Phi);
+
+    if (mature)
+      fixPHI(BB, Var, Phi);
+    else
+      Todos[BB][Var] = Phi;
+
+    return Phi;
+  }
+
+  llvm::Value* result = getValue(single_pred, Var);
+  setValue(BB, Var, result);
+
+  return result;
+}
+
+void CodeGenFunction::setMature(llvm::BasicBlock* BB) {
+  assert(Mature.find(BB) == Mature.end());
+  Mature.insert(BB);
+
+  Var2Phi& Phis = Todos[BB];
+  for (Var2Phi::iterator i = Phis.begin(), e = Phis.end(); i != e; ++i)
+      fixPHI(BB, i->first, i->second);
+}
+
+void CodeGenFunction::fixPHI(llvm::BasicBlock* BB, llvm::Value* Var, llvm::PHINode* Phi) {
+  for (llvm::pred_iterator i = llvm::pred_begin(BB), e = llvm::pred_end(BB); i != e; ++i) {
+    llvm::BasicBlock* pred = *i;
+    Phi->addIncoming(getValue(pred, Var), pred);
+  }
 }
