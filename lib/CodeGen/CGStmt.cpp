@@ -409,11 +409,10 @@ void CodeGenFunction::EmitIfStmt(const IfStmt &S) {
   if (S.getElse())
     ElseBlock = createBasicBlock("if.else");
   EmitBranchOnBoolExpr(S.getCond(), ThenBlock, ElseBlock);
-  setMature(ThenBlock);
-  setMature(ElseBlock);
 
   // Emit the 'then' code.
   EmitBlock(ThenBlock); 
+  setMature(ThenBlock);
   {
     RunCleanupsScope ThenScope(*this);
     EmitStmt(S.getThen());
@@ -426,6 +425,7 @@ void CodeGenFunction::EmitIfStmt(const IfStmt &S) {
     if (getDebugInfo())
       Builder.SetCurrentDebugLocation(llvm::DebugLoc());
     EmitBlock(ElseBlock);
+    setMature(ElseBlock);
     {
       RunCleanupsScope ElseScope(*this);
       EmitStmt(Else);
@@ -434,10 +434,10 @@ void CodeGenFunction::EmitIfStmt(const IfStmt &S) {
     if (getDebugInfo())
       Builder.SetCurrentDebugLocation(llvm::DebugLoc());
     EmitBranch(ContBlock);
-    setMature(ContBlock);
   }
 
   // Emit the continuation block for code after the if.
+  setMature(ContBlock);
   EmitBlock(ContBlock, true);
 }
 
@@ -491,16 +491,14 @@ void CodeGenFunction::EmitWhileStmt(const WhileStmt &S) {
       EmitBlock(ExitBlock);
       EmitBranchThroughCleanup(LoopExit);
     }
-  } else {
-    EmitBranch(LoopBody);
   }
-  setMature(LoopBody);
  
   // Emit the loop body.  We have to emit this in a cleanup scope
   // because it might be a singleton DeclStmt.
   {
     RunCleanupsScope BodyScope(*this);
     EmitBlock(LoopBody);
+    setMature(LoopBody);
     EmitStmt(S.getBody());
   }
 
