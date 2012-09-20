@@ -539,6 +539,7 @@ void CodeGenFunction::EmitDoStmt(const DoStmt &S) {
   BreakContinueStack.pop_back();
 
   EmitBlock(LoopCond.getBlock());
+  setMature(LoopCond.getBlock());
 
   // C99 6.8.5.2: "The evaluation of the controlling expression takes place
   // after each execution of the loop body."
@@ -561,6 +562,8 @@ void CodeGenFunction::EmitDoStmt(const DoStmt &S) {
 
   // Emit the exit block.
   EmitBlock(LoopExit.getBlock());
+  setMature(LoopExit.getBlock());
+  setMature(LoopBody);
 
   // The DoCond block typically is just a branch if we skipped
   // emitting a branch, try to erase it.
@@ -619,6 +622,7 @@ void CodeGenFunction::EmitForStmt(const ForStmt &S) {
     }
 
     EmitBlock(ForBody);
+    setMature(ForBody);
   } else {
     // Treat it as a non-zero constant.  Don't even create a new block for the
     // body, just fall into it.
@@ -644,6 +648,7 @@ void CodeGenFunction::EmitForStmt(const ForStmt &S) {
   // If there is an increment, emit it next.
   if (S.getInc()) {
     EmitBlock(Continue.getBlock());
+    setMature(Continue.getBlock());
     EmitStmt(S.getInc());
   }
 
@@ -658,6 +663,7 @@ void CodeGenFunction::EmitForStmt(const ForStmt &S) {
     DI->EmitLexicalBlockEnd(Builder, S.getSourceRange().getEnd());
 
   // Emit the fall-through block.
+  setMature(LoopExit.getBlock());
   EmitBlock(LoopExit.getBlock(), true);
 }
 
@@ -947,6 +953,7 @@ void CodeGenFunction::EmitCaseStmt(const CaseStmt &S) {
     NextCase = dyn_cast<CaseStmt>(CurCase->getSubStmt());
   }
 
+  setMature(CaseDest);
   // Normal default recursion for non-cases.
   EmitStmt(CurCase->getSubStmt());
 }
@@ -956,6 +963,7 @@ void CodeGenFunction::EmitDefaultStmt(const DefaultStmt &S) {
   assert(DefaultBlock->empty() &&
          "EmitDefaultStmt: Default block already defined?");
   EmitBlock(DefaultBlock);
+  setMature(DefaultBlock);
   EmitStmt(S.getSubStmt());
 }
 
