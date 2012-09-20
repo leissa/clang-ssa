@@ -1198,29 +1198,31 @@ void CodeGenFunction::setMature(llvm::BasicBlock* BB) {
       fixPHI(BB, i->first, i->second);
 }
 
-llvm::Value* CodeGenFunction::fixPHI(llvm::BasicBlock* BB, llvm::Value* Var, llvm::PHINode* Phi) {
-  llvm::Value* same = 0;
+static llvm::Value* tryRemoveRedundantPHI(llvm::PHINode* const Phi) {
+  llvm::Value* Same = 0;
+  for (llvm::User::const_op_iterator i = Phi->op_begin(), e = Phi->op_end(); i != e; ++i) {
+    llvm::Value* const Val = *i;
+    if (Val == Same || Val == Phi)
+      continue;
+    if (Same)
+      return Phi;
+    Same = Val;
+  }
+  if (!Same)
+    Same = llvm::UndefValue::get(Phi->getType());
+  Phi->replaceAllUsesWith(Same);
+  Phi->eraseFromParent();
+  if (llvm::PHINode* const OpPhi = dyn_cast<llvm::PHINode>(Same))
+    return tryRemoveRedundantPHI(OpPhi);
+  return Same;
+}
 
+llvm::Value* CodeGenFunction::fixPHI(llvm::BasicBlock* BB, llvm::Value* Var, llvm::PHINode* Phi) {
   for (llvm::pred_iterator i = llvm::pred_begin(BB), e = llvm::pred_end(BB); i != e; ++i) {
     llvm::BasicBlock* pred = *i;
     llvm::Value*      val  = getValue(pred, Var);
     Phi->addIncoming(val, pred);
-
-    if (Phi == val || same == val)
-        continue;
-
-    if (same)
-      same = (llvm::Value*)-1;
-    else
-      same = val;
   }
 
-  if (same == (llvm::Value*)-1)
-    return Phi;
-  if (!same)
-    same = llvm::UndefValue::get(getVarType(Var));
-
-  Phi->replaceAllUsesWith(same);
-  Phi->eraseFromParent();
-  return same;
+  return tryRemoveRedundantPHI(Phi);
 }
