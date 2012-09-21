@@ -1911,7 +1911,7 @@ public:
       : Variable(&variable), Address(0), NRVOFlag(0),
         IsByRef(false), IsConstantAggregate(false) {}
 
-    bool wasEmittedAsGlobal() const { return Address == 0; }
+    bool wasEmittedAsGlobal() const { return Address == (llvm::Value*)-1; }
 
   public:
     static AutoVarEmission invalid() { return AutoVarEmission(Invalid()); }

@@ -802,7 +802,7 @@ CodeGenFunction::EmitAutoVarAlloca(const VarDecl &D) {
             CGM.isTypeConstant(Ty, true)) {
           EmitStaticVarDecl(D, llvm::GlobalValue::InternalLinkage);
 
-          emission.Address = 0; // signal this condition to later callbacks
+          emission.Address = (llvm::Value*)-1; // signal this condition to later callbacks
           assert(emission.wasEmittedAsGlobal());
           return emission;
         }
@@ -1024,7 +1024,7 @@ void CodeGenFunction::EmitAutoVarInit(const AutoVarEmission &emission) {
   }
 
   if (!constant) {
-    LValue lv = MakeAddrLValue(Loc, type, alignment);
+    LValue lv = D.AddressTaken ? MakeAddrLValue(Loc, type, alignment) : MakeSSAVal(&D, type, alignment);
     lv.setNonGC(true);
     return EmitExprAsInit(Init, &D, lv, capturedByInit);
   }
