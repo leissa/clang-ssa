@@ -825,6 +825,9 @@ protected:
     VarDeclBits.SClass = SC;
     VarDeclBits.SClassAsWritten = SCAsWritten;
     // Everything else is implicitly initialized to false.
+
+    if (hasGlobalStorage())
+      AddressTaken = true;
   }
 
   typedef Redeclarable<VarDecl> redeclarable_base;
