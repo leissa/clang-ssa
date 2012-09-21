@@ -580,6 +580,7 @@ public:
   void setValue(llvm::Value* Var, llvm::Value* NewVal) {
     setValue(Builder.GetInsertBlock(), Var, NewVal);
   }
+  bool isMature(llvm::BasicBlock* const BB) { return Mature.find(BB) != Mature.end(); }
   void setMature(llvm::BasicBlock* BB);
 
   llvm::Value* getValue(llvm::BasicBlock* BB, llvm::Value* Var);

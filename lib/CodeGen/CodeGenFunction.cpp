@@ -1164,7 +1164,7 @@ llvm::Value* CodeGenFunction::getValue(llvm::BasicBlock* BB, llvm::Value* Var) {
 
   llvm::Type* Type = getVarType(Var);
 
-  bool mature = Mature.find(BB) != Mature.end();
+  bool mature = isMature(BB);
   llvm::BasicBlock* single_pred = BB->getSinglePredecessor();
 
   // not mature or more than one predecessor
@@ -1190,7 +1190,7 @@ llvm::Value* CodeGenFunction::getValue(llvm::BasicBlock* BB, llvm::Value* Var) {
 }
 
 void CodeGenFunction::setMature(llvm::BasicBlock* BB) {
-  assert(Mature.find(BB) == Mature.end());
+  assert(!isMature(BB));
   Mature.insert(BB);
 
   Var2Phi& Phis = Todos[BB];
