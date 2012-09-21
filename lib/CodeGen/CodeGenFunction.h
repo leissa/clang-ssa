@@ -1584,6 +1584,11 @@ public:
   //                                  Helpers
   //===--------------------------------------------------------------------===//
 
+  LValue MakeSSAVal(const ValueDecl* Decl, llvm::Value* V, QualType T,
+                        CharUnits Alignment = CharUnits()) {
+    return LValue::MakeSSAVal(Decl, V, T, Alignment, getContext(),
+                            CGM.getTBAAInfo(T));
+  }
   LValue MakeAddrLValue(llvm::Value *V, QualType T,
                         CharUnits Alignment = CharUnits()) {
     return LValue::MakeAddr(V, T, Alignment, getContext(),

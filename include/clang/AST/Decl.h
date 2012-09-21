@@ -531,7 +531,7 @@ class ValueDecl : public NamedDecl {
 protected:
   ValueDecl(Kind DK, DeclContext *DC, SourceLocation L,
             DeclarationName N, QualType T)
-    : NamedDecl(DK, DC, L, N), DeclType(T) {}
+    : NamedDecl(DK, DC, L, N), DeclType(T), AddressTaken(false) {}
 public:
   QualType getType() const { return DeclType; }
   void setType(QualType newType) { DeclType = newType; }
@@ -541,6 +541,8 @@ public:
   bool isWeak() const {
     return hasAttr<WeakAttr>() || hasAttr<WeakRefAttr>() || isWeakImported();
   }
+
+  bool AddressTaken;
 
   // Implement isa/cast/dyncast/etc.
   static bool classof(const Decl *D) { return classofKind(D->getKind()); }

@@ -1752,7 +1752,14 @@ ExprResult Sema::ActOnIdExpression(Scope *S,
   if (TemplateArgs || TemplateKWLoc.isValid())
     return BuildTemplateIdExpr(SS, TemplateKWLoc, R, ADL, TemplateArgs);
 
-  return BuildDeclarationNameExpr(SS, R, ADL);
+  ExprResult Res = BuildDeclarationNameExpr(SS, R, ADL);
+
+  if (DeclRefExpr* DeclRef = dyn_cast<DeclRefExpr>(Res.get())) {
+    if (IsAddressOfOperand)
+      DeclRef->getDecl()->AddressTaken = true;
+  }
+
+  return Res;
 }
 
 /// BuildQualifiedDeclarationNameExpr - Build a C++ qualified

@@ -169,6 +169,9 @@ private:
   }
 
 public:
+
+  const ValueDecl* Decl;
+
   bool isSimple() const { return LVType == Simple; }
   bool isVectorElt() const { return LVType == VectorElt; }
   bool isBitField() const { return LVType == BitField; }
@@ -254,6 +257,20 @@ public:
     return *BitFieldInfo;
   }
 
+  static LValue MakeSSAVal(const ValueDecl* Decl, llvm::Value *address, QualType type,
+                         CharUnits alignment, ASTContext &Context,
+                         llvm::MDNode *TBAAInfo = 0) {
+    Qualifiers qs = type.getQualifiers();
+    qs.setObjCGCAttr(Context.getObjCGCAttrKind(type));
+
+    LValue R;
+    R.Decl = Decl;
+    R.LVType = Simple;
+    R.V = address;
+    R.Initialize(type, qs, alignment, TBAAInfo);
+    return R;
+  }
+
   static LValue MakeAddr(llvm::Value *address, QualType type,
                          CharUnits alignment, ASTContext &Context,
                          llvm::MDNode *TBAAInfo = 0) {
@@ -261,6 +278,7 @@ public:
     qs.setObjCGCAttr(Context.getObjCGCAttrKind(type));
 
     LValue R;
+    R.Decl = 0;
     R.LVType = Simple;
     R.V = address;
     R.Initialize(type, qs, alignment, TBAAInfo);
@@ -270,6 +288,7 @@ public:
   static LValue MakeVectorElt(llvm::Value *Vec, llvm::Value *Idx,
                               QualType type, CharUnits Alignment) {
     LValue R;
+    R.Decl = 0;
     R.LVType = VectorElt;
     R.V = Vec;
     R.VectorIdx = Idx;
@@ -280,6 +299,7 @@ public:
   static LValue MakeExtVectorElt(llvm::Value *Vec, llvm::Constant *Elts,
                                  QualType type, CharUnits Alignment) {
     LValue R;
+    R.Decl = 0;
     R.LVType = ExtVectorElt;
     R.V = Vec;
     R.VectorElts = Elts;
@@ -297,6 +317,7 @@ public:
                              const CGBitFieldInfo &Info,
                              QualType type) {
     LValue R;
+    R.Decl = 0;
     R.LVType = BitField;
     R.V = BaseValue;
     R.BitFieldInfo = &Info;

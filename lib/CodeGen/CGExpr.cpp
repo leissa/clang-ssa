@@ -856,7 +856,7 @@ CodeGenFunction::tryEmitAsConstant(DeclRefExpr *refExpr) {
 }
 
 llvm::Value *CodeGenFunction::EmitLoadOfScalar(LValue lvalue) {
-  if (lvalue.isSimple())
+  if (lvalue.Decl)
     return getValue(lvalue.getAddress());
   else
     return EmitLoadOfScalar(lvalue.getAddress(), lvalue.isVolatile(),
@@ -1602,7 +1602,10 @@ LValue CodeGenFunction::EmitDeclRefLValue(const DeclRefExpr *E) {
       V = LI;
       LV = MakeNaturalAlignAddrLValue(V, T);
     } else {
-      LV = MakeAddrLValue(V, T, Alignment);
+      if (E->getDecl()->AddressTaken)
+        LV = MakeAddrLValue(V, T, Alignment);
+      else
+        LV = MakeSSAVal(E->getDecl(), V, T, Alignment);
     }
 
     if (NonGCable) {
