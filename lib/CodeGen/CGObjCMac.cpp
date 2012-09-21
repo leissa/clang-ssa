@@ -3409,11 +3409,11 @@ void CGObjCMac::EmitTryOrSynchronizedStmt(CodeGen::CodeGenFunction &CGF,
   if (CGF.HaveInsertPoint())
     CGF.Builder.CreateStore(CGF.Builder.getTrue(), CallTryExitVar);
   CGF.PopCleanupBlock();
-  CGF.EmitBlock(FinallyEnd.getBlock(), true);
+  CGF.EmitBlock(FinallyEnd.getBlock(), CodeGenFunction::BlockState_Deletable);
 
   // Emit the rethrow block.
   CGBuilderTy::InsertPoint SavedIP = CGF.Builder.saveAndClearIP();
-  CGF.EmitBlock(FinallyRethrow.getBlock(), true);
+  CGF.EmitBlock(FinallyRethrow.getBlock(), CodeGenFunction::BlockState_Deletable);
   if (CGF.HaveInsertPoint()) {
     // If we have a propagating-exception variable, check it.
     llvm::Value *PropagatingExn;

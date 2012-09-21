@@ -863,7 +863,7 @@ CodeGenFunction::EmitNewArrayInitializer(const CXXNewExpr *E,
   llvm::BasicBlock *entryBB = Builder.GetInsertBlock();
   llvm::BasicBlock *loopBB = createBasicBlock("new.loop");
 
-  EmitBlock(loopBB);
+  EmitBlock(loopBB, BlockState_Unfinished);
 
   // Set up the current-element phi.
   llvm::PHINode *curPtr =
@@ -897,6 +897,7 @@ CodeGenFunction::EmitNewArrayInitializer(const CXXNewExpr *E,
   // exit the loop.
   llvm::Value *isEnd = Builder.CreateICmpEQ(nextPtr, endPtr, "array.atend");
   Builder.CreateCondBr(isEnd, contBB, loopBB);
+  setMature(loopBB);
   curPtr->addIncoming(nextPtr, Builder.GetInsertBlock());
 
   EmitBlock(contBB);

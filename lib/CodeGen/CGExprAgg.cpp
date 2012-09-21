@@ -484,7 +484,7 @@ void AggExprEmitter::EmitArrayInit(llvm::Value *DestPtr, llvm::ArrayType *AType,
     llvm::BasicBlock *bodyBB = CGF.createBasicBlock("arrayinit.body");
 
     // Jump into the body.
-    CGF.EmitBlock(bodyBB);
+    CGF.EmitBlock(bodyBB, CodeGenFunction::BlockState_Unfinished);
     llvm::PHINode *currentElement =
       Builder.CreatePHI(element->getType(), 2, "arrayinit.cur");
     currentElement->addIncoming(element, entryBB);
@@ -508,6 +508,7 @@ void AggExprEmitter::EmitArrayInit(llvm::Value *DestPtr, llvm::ArrayType *AType,
                                              "arrayinit.done");
     llvm::BasicBlock *endBB = CGF.createBasicBlock("arrayinit.end");
     Builder.CreateCondBr(done, endBB, bodyBB);
+    CGF.setMature(bodyBB);
     currentElement->addIncoming(nextElement, Builder.GetInsertBlock());
 
     CGF.EmitBlock(endBB);

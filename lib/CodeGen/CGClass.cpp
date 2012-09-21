@@ -478,7 +478,7 @@ static void EmitAggMemberInitializer(CodeGenFunction &CGF,
   llvm::BasicBlock *CondBlock = CGF.createBasicBlock("for.cond");
   llvm::BasicBlock *AfterFor = CGF.createBasicBlock("for.end");
   
-  CGF.EmitBlock(CondBlock);
+  CGF.EmitBlock(CondBlock, CodeGenFunction::BlockState_Unfinished);
 
   llvm::BasicBlock *ForBody = CGF.createBasicBlock("for.body");
   // Generate: if (loop-index < number-of-elements) fall to the loop body,
@@ -515,9 +515,10 @@ static void EmitAggMemberInitializer(CodeGenFunction &CGF,
 
   // Finally, branch back up to the condition for the next iteration.
   CGF.EmitBranch(CondBlock);
+  CGF.setMature(CondBlock);
 
   // Emit the fall-through block.
-  CGF.EmitBlock(AfterFor, true);
+  CGF.EmitBlock(AfterFor, CodeGenFunction::BlockState_Deletable);
 }
 
 namespace {
@@ -1154,7 +1155,7 @@ CodeGenFunction::EmitCXXAggrConstructorCall(const CXXConstructorDecl *ctor,
   // Enter the loop, setting up a phi for the current location to initialize.
   llvm::BasicBlock *entryBB = Builder.GetInsertBlock();
   llvm::BasicBlock *loopBB = createBasicBlock("arrayctor.loop");
-  EmitBlock(loopBB);
+  EmitBlock(loopBB, BlockState_Unfinished);
   llvm::PHINode *cur = Builder.CreatePHI(arrayBegin->getType(), 2,
                                          "arrayctor.cur");
   cur->addIncoming(arrayBegin, entryBB);
@@ -1200,6 +1201,7 @@ CodeGenFunction::EmitCXXAggrConstructorCall(const CXXConstructorDecl *ctor,
   llvm::Value *done = Builder.CreateICmpEQ(next, arrayEnd, "arrayctor.done");
   llvm::BasicBlock *contBB = createBasicBlock("arrayctor.cont");
   Builder.CreateCondBr(done, contBB, loopBB);
+  setMature(loopBB);
 
   // Patch the earlier check to skip over the loop.
   if (zeroCheckBranch) zeroCheckBranch->setSuccessor(0, contBB);

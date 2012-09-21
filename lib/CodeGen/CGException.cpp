@@ -755,7 +755,7 @@ llvm::BasicBlock *CodeGenFunction::EmitLandingPad() {
 
   // Create and configure the landing pad.
   llvm::BasicBlock *lpad = createBasicBlock("lpad");
-  EmitBlock(lpad);
+  EmitBlock(lpad, BlockState_Unfinished);
 
   llvm::LandingPadInst *LPadInst =
     Builder.CreateLandingPad(llvm::StructType::get(Int8PtrTy, Int32Ty, NULL),

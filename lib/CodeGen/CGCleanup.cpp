@@ -598,7 +598,7 @@ void CodeGenFunction::PopCleanupBlock(bool FallthroughIsBranchThrough) {
     // dead optimistic fixup branches.
     } else {
       prebranchDest = createBasicBlock("forwarded-prebranch");
-      EmitBlock(prebranchDest);
+      EmitBlock(prebranchDest, BlockState_Unfinished);
     }
 
     llvm::BasicBlock *normalEntry = Scope.getNormalBlock();
@@ -674,7 +674,7 @@ void CodeGenFunction::PopCleanupBlock(bool FallthroughIsBranchThrough) {
       // II.  Emit the entry block.  This implicitly branches to it if
       // we have fallthrough.  All the fixups and existing branches
       // should already be branched to it.
-      EmitBlock(NormalEntry);
+      EmitBlock(NormalEntry, BlockState_Unfinished);
 
       // III.  Figure out where we're going and build the cleanup
       // epilogue.

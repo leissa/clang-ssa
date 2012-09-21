@@ -715,7 +715,7 @@ static void emitNonZeroVLAInit(CodeGenFunction &CGF, QualType baseType,
 
   // Make a loop over the VLA.  C99 guarantees that the VLA element
   // count must be nonzero.
-  CGF.EmitBlock(loopBB);
+  CGF.EmitBlock(loopBB, CodeGenFunction::BlockState_Unfinished);
 
   llvm::PHINode *cur = Builder.CreatePHI(i8p, 2, "vla.cur");
   cur->addIncoming(begin, originBB);
@@ -731,6 +731,7 @@ static void emitNonZeroVLAInit(CodeGenFunction &CGF, QualType baseType,
   // Leave if that's the end of the VLA.
   llvm::Value *done = Builder.CreateICmpEQ(next, end, "vla-init.isdone");
   Builder.CreateCondBr(done, contBB, loopBB);
+  CGF.setMature(loopBB);
   cur->addIncoming(next, loopBB);
 
   CGF.EmitBlock(contBB);

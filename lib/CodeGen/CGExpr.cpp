@@ -1760,7 +1760,7 @@ llvm::BasicBlock *CodeGenFunction::getTrapBB() {
     EmitBranch(Cont);
   }
   TrapBB = createBasicBlock("trap");
-  EmitBlock(TrapBB);
+  EmitBlock(TrapBB, BlockState_Unfinished);
 
   llvm::Value *F = CGM.getIntrinsic(llvm::Intrinsic::trap);
   llvm::CallInst *TrapCall = Builder.CreateCall(F);

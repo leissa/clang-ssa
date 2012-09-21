@@ -1536,15 +1536,17 @@ public:
   /// potentially reference the basic block.
   void SimplifyForwardingBlocks(llvm::BasicBlock *BB);
 
+  enum BlockState {
+    BlockState_Finished,  ///< Block does not get any further predecessors.
+    BlockState_Deletable, ///< Finished and will be deleted if it has no predecessors.
+    BlockState_Unfinished ///< Block might get further predecessors.
+  };
+
   /// EmitBlock - Emit the given block \arg BB and set it as the insert point,
   /// adding a fall-through branch from the current insert block if
   /// necessary. It is legal to call this function even if there is no current
   /// insertion point.
-  ///
-  /// IsFinished - If true, indicates that the caller has finished emitting
-  /// branches to the given block and does not expect to emit code into it. This
-  /// means the block can be ignored if it is unreachable.
-  void EmitBlock(llvm::BasicBlock *BB, bool IsFinished=false);
+  void EmitBlock(llvm::BasicBlock *BB, BlockState BS = BlockState_Finished);
 
   /// EmitBlockAfterUses - Emit the given block somewhere hopefully
   /// near its uses, and leave the insertion point in it.

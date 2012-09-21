@@ -1470,7 +1470,7 @@ void CodeGenFunction::EmitObjCForCollectionStmt(const ObjCForCollectionStmt &S){
   // Start looping.  This is the point we return to whenever we have a
   // fresh, non-empty batch of objects.
   llvm::BasicBlock *LoopBodyBB = createBasicBlock("forcoll.loopbody");
-  EmitBlock(LoopBodyBB);
+  EmitBlock(LoopBodyBB, BlockState_Unfinished);
 
   // The current index into the buffer.
   llvm::PHINode *index = Builder.CreatePHI(UnsignedLongLTy, 3, "forcoll.index");
@@ -1611,6 +1611,7 @@ void CodeGenFunction::EmitObjCForCollectionStmt(const ObjCForCollectionStmt &S){
 
   Builder.CreateCondBr(Builder.CreateICmpEQ(refetchCount, zero),
                        EmptyBB, LoopBodyBB);
+  setMature(LoopBodyBB);
 
   // No more elements.
   EmitBlock(EmptyBB);

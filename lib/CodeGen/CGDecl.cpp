@@ -1306,7 +1306,7 @@ void CodeGenFunction::emitArrayDestroy(llvm::Value *begin,
 
   // Enter the loop body, making that address the current address.
   llvm::BasicBlock *entryBB = Builder.GetInsertBlock();
-  EmitBlock(bodyBB);
+  EmitBlock(bodyBB, BlockState_Unfinished);
   llvm::PHINode *elementPast =
     Builder.CreatePHI(begin->getType(), 2, "arraydestroy.elementPast");
   elementPast->addIncoming(end, entryBB);
@@ -1328,6 +1328,7 @@ void CodeGenFunction::emitArrayDestroy(llvm::Value *begin,
   // Check whether we've reached the end.
   llvm::Value *done = Builder.CreateICmpEQ(element, begin, "arraydestroy.done");
   Builder.CreateCondBr(done, doneBB, bodyBB);
+  setMature(bodyBB);
   elementPast->addIncoming(element, Builder.GetInsertBlock());
 
   // Done.
