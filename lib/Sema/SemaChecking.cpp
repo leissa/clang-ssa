@@ -1186,6 +1186,9 @@ bool Sema::SemaBuiltinVAStart(CallExpr *TheCall) {
   if (checkBuiltinArgument(*this, TheCall, 0))
     return true;
 
+  if (DeclRefExpr *DR = dyn_cast<DeclRefExpr>(TheCall->getArg(0)))
+    DR->getDecl()->AddressTaken = true;
+
   // Determine whether the current function is variadic or not.
   BlockScopeInfo *CurBlock = getCurBlock();
   bool isVariadic;
@@ -1204,10 +1207,9 @@ bool Sema::SemaBuiltinVAStart(CallExpr *TheCall) {
   // Verify that the second argument to the builtin is the last argument of the
   // current function or method.
   bool SecondArgIsLastNamedArgument = false;
-  Expr *Arg = TheCall->getArg(1)->IgnoreParenCasts();
+  const Expr *Arg = TheCall->getArg(1)->IgnoreParenCasts();
 
-  if (DeclRefExpr *DR = dyn_cast<DeclRefExpr>(Arg)) {
-    DR->getDecl()->AddressTaken = true;
+  if (const DeclRefExpr *DR = dyn_cast<DeclRefExpr>(Arg)) {
     if (const ParmVarDecl *PV = dyn_cast<ParmVarDecl>(DR->getDecl())) {
       // FIXME: This isn't correct for methods (results in bogus warning).
       // Get the last formal in the current function.
