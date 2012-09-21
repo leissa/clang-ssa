@@ -1497,6 +1497,11 @@ void CodeGenFunction::EmitParmDecl(const VarDecl &D, llvm::Value *Arg,
       CodeGenFunction::hasAggregateLLVMType(Ty)) {
     DeclPtr = Arg;
   } else {
+    if (!D.AddressTaken) {
+      setValue(&D, Arg);
+      return;
+    }
+
     // Otherwise, create a temporary to hold the value.
     llvm::AllocaInst *Alloc = CreateTempAlloca(ConvertTypeForMem(Ty),
                                                D.getName() + ".addr");
