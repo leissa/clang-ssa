@@ -1204,9 +1204,10 @@ bool Sema::SemaBuiltinVAStart(CallExpr *TheCall) {
   // Verify that the second argument to the builtin is the last argument of the
   // current function or method.
   bool SecondArgIsLastNamedArgument = false;
-  const Expr *Arg = TheCall->getArg(1)->IgnoreParenCasts();
+  Expr *Arg = TheCall->getArg(1)->IgnoreParenCasts();
 
-  if (const DeclRefExpr *DR = dyn_cast<DeclRefExpr>(Arg)) {
+  if (DeclRefExpr *DR = dyn_cast<DeclRefExpr>(Arg)) {
+    DR->getDecl()->AddressTaken = true;
     if (const ParmVarDecl *PV = dyn_cast<ParmVarDecl>(DR->getDecl())) {
       // FIXME: This isn't correct for methods (results in bogus warning).
       // Get the last formal in the current function.
