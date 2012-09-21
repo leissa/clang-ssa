@@ -856,8 +856,8 @@ CodeGenFunction::tryEmitAsConstant(DeclRefExpr *refExpr) {
 }
 
 llvm::Value *CodeGenFunction::EmitLoadOfScalar(LValue lvalue) {
-  if (lvalue.Decl)
-    return getValue(lvalue.getAddress());
+  if (const ValueDecl* Decl = lvalue.Decl)
+    return getValue(Decl);
   else
     return EmitLoadOfScalar(lvalue.getAddress(), lvalue.isVolatile(),
                             lvalue.getAlignment().getQuantity(),
@@ -979,8 +979,8 @@ void CodeGenFunction::EmitStoreOfScalar(llvm::Value *Value, llvm::Value *Addr,
 void CodeGenFunction::EmitStoreOfScalar(llvm::Value *value, LValue lvalue,
     bool isInit) {
 
-  if (lvalue.isSimple())
-    setValue(lvalue.getAddress(), value);
+  if (const ValueDecl* Decl = lvalue.Decl)
+    setValue(Decl, value);
   else
     EmitStoreOfScalar(value, lvalue.getAddress(), lvalue.isVolatile(),
                       lvalue.getAlignment().getQuantity(), lvalue.getType(),
@@ -1561,6 +1561,11 @@ LValue CodeGenFunction::EmitDeclRefLValue(const DeclRefExpr *E) {
   }
 
   if (const VarDecl *VD = dyn_cast<VarDecl>(ND)) {
+    if (!VD->AddressTaken) {
+      CharUnits alignment = getContext().getDeclAlign(VD);
+      return MakeSSAVal(VD, E->getType(), alignment);
+    }
+
     // Check if this is a global variable.
     if (VD->hasExternalStorage() || VD->isFileVarDecl()) 
       return EmitGlobalVarDeclLValue(*this, E, VD);
@@ -1605,7 +1610,7 @@ LValue CodeGenFunction::EmitDeclRefLValue(const DeclRefExpr *E) {
       if (E->getDecl()->AddressTaken)
         LV = MakeAddrLValue(V, T, Alignment);
       else
-        LV = MakeSSAVal(E->getDecl(), V, T, Alignment);
+        LV = MakeSSAVal(E->getDecl(), T, Alignment);
     }
 
     if (NonGCable) {

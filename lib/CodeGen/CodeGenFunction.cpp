@@ -1150,19 +1150,18 @@ llvm::Value *CodeGenFunction::EmitFieldAnnotations(const FieldDecl *D,
   return V;
 }
 
-static llvm::Type* getVarType(llvm::Value* Var) {
- return dyn_cast<llvm::PointerType>(Var->getType())->getElementType();
+llvm::Type* CodeGenFunction::getType(const ValueDecl* Decl) {
+  return getTypes().ConvertType(Decl->getType());
 }
 
-llvm::Value* CodeGenFunction::getValue(llvm::BasicBlock* BB, llvm::Value* Var) {
-  assert(isa<llvm::AllocaInst>(Var));
+llvm::Value* CodeGenFunction::getValue(llvm::BasicBlock* BB, const ValueDecl* Var) {
   Var2Val& Vars = Values[BB];
   Var2Val::iterator i = Vars.find(Var);
 
   if (i != Vars.end())
     return i->second;
 
-  llvm::Type* Type = getVarType(Var);
+  llvm::Type* Type = getType(Var);
 
   bool mature = isMature(BB);
   llvm::BasicBlock* single_pred = BB->getSinglePredecessor();
@@ -1222,7 +1221,7 @@ llvm::Value* CodeGenFunction::tryRemoveRedundantPHI(llvm::PHINode* const Phi) {
   return Same;
 }
 
-llvm::Value* CodeGenFunction::fixPHI(llvm::BasicBlock* BB, llvm::Value* Var, llvm::PHINode* Phi) {
+llvm::Value* CodeGenFunction::fixPHI(llvm::BasicBlock* BB, const ValueDecl* Var, llvm::PHINode* Phi) {
   for (llvm::pred_iterator i = llvm::pred_begin(BB), e = llvm::pred_end(BB); i != e; ++i) {
     llvm::BasicBlock* pred = *i;
     llvm::Value*      val  = getValue(pred, Var);

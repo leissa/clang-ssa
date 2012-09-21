@@ -257,7 +257,7 @@ public:
     return *BitFieldInfo;
   }
 
-  static LValue MakeSSAVal(const ValueDecl* Decl, llvm::Value *address, QualType type,
+  static LValue MakeSSAVal(const ValueDecl* Decl, QualType type,
                          CharUnits alignment, ASTContext &Context,
                          llvm::MDNode *TBAAInfo = 0) {
     Qualifiers qs = type.getQualifiers();
@@ -266,7 +266,7 @@ public:
     LValue R;
     R.Decl = Decl;
     R.LVType = Simple;
-    R.V = address;
+    R.V = 0;
     R.Initialize(type, qs, alignment, TBAAInfo);
     return R;
   }

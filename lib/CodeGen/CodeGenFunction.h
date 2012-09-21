@@ -562,33 +562,33 @@ public:
   CodeGenModule &CGM;  // Per-module state.
   const TargetInfo &Target;
 
-  typedef llvm::DenseMap<llvm::Value*, llvm::TrackingVH<llvm::Value> > Var2Val;
+  typedef llvm::DenseMap<const ValueDecl*, llvm::TrackingVH<llvm::Value> > Var2Val;
   typedef llvm::DenseMap<llvm::BasicBlock*, Var2Val> BB2Var2Val;
   BB2Var2Val Values;
 
-  typedef llvm::DenseMap<llvm::Value*, llvm::PHINode*> Var2Phi;
+  typedef llvm::DenseMap<const ValueDecl*, llvm::PHINode*> Var2Phi;
   typedef llvm::DenseMap<llvm::BasicBlock*, Var2Phi> BB2Var2Phi;
   BB2Var2Phi Todos;
 
   typedef llvm::DenseSet<llvm::BasicBlock*> BBs;
   BBs Mature;
 
-  void setValue(llvm::BasicBlock* BB, llvm::Value* Var, llvm::Value* NewVal) {
-    assert(isa<llvm::AllocaInst>(Var));
+  void setValue(llvm::BasicBlock* BB, const ValueDecl* Var, llvm::Value* NewVal) {
     Values[BB][Var] = NewVal;
   }
-  void setValue(llvm::Value* Var, llvm::Value* NewVal) {
+  void setValue(const ValueDecl* Var, llvm::Value* NewVal) {
     setValue(Builder.GetInsertBlock(), Var, NewVal);
   }
   bool isMature(llvm::BasicBlock* const BB) { return Mature.find(BB) != Mature.end(); }
   void setMature(llvm::BasicBlock* BB);
 
-  llvm::Value* getValue(llvm::BasicBlock* BB, llvm::Value* Var);
-  llvm::Value* getValue(llvm::Value* Var) { 
+  llvm::Value* getValue(llvm::BasicBlock* BB, const ValueDecl* Var);
+  llvm::Value* getValue(const ValueDecl* Var) { 
     return getValue(Builder.GetInsertBlock(), Var);
   }
   llvm::Value* tryRemoveRedundantPHI(llvm::PHINode* Phi);
-  llvm::Value* fixPHI(llvm::BasicBlock* BB, llvm::Value* Var, llvm::PHINode* Phi);
+  llvm::Value* fixPHI(llvm::BasicBlock* BB, const ValueDecl* Var, llvm::PHINode* Phi);
+  llvm::Type* getType(const ValueDecl* Decl);
 
   typedef std::pair<llvm::Value *, llvm::Value *> ComplexPairTy;
   CGBuilderTy Builder;
@@ -1584,9 +1584,9 @@ public:
   //                                  Helpers
   //===--------------------------------------------------------------------===//
 
-  LValue MakeSSAVal(const ValueDecl* Decl, llvm::Value* V, QualType T,
+  LValue MakeSSAVal(const ValueDecl* Decl, QualType T,
                         CharUnits Alignment = CharUnits()) {
-    return LValue::MakeSSAVal(Decl, V, T, Alignment, getContext(),
+    return LValue::MakeSSAVal(Decl, T, Alignment, getContext(),
                             CGM.getTBAAInfo(T));
   }
   LValue MakeAddrLValue(llvm::Value *V, QualType T,

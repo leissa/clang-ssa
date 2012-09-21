@@ -840,14 +840,18 @@ CodeGenFunction::EmitAutoVarAlloca(const VarDecl &D) {
         if (isByRef)
           LTy = BuildByRefType(&D);
 
-        llvm::AllocaInst *Alloc = CreateTempAlloca(LTy);
-        Alloc->setName(D.getName());
+        llvm::AllocaInst *Alloc = 0;
+        if (D.AddressTaken) {
+          Alloc = CreateTempAlloca(LTy);
+          Alloc->setName(D.getName());
 
-        CharUnits allocaAlignment = alignment;
-        if (isByRef)
-          allocaAlignment = std::max(allocaAlignment,
-              getContext().toCharUnitsFromBits(Target.getPointerAlign(0)));
-        Alloc->setAlignment(allocaAlignment.getQuantity());
+          CharUnits allocaAlignment = alignment;
+          if (isByRef)
+            allocaAlignment = std::max(allocaAlignment,
+                                       getContext().toCharUnitsFromBits(Target.getPointerAlign(0)));
+          Alloc->setAlignment(allocaAlignment.getQuantity());
+        }
+
         DeclPtr = Alloc;
       }
     } else {
