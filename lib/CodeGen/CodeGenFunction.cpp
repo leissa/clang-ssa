@@ -1191,14 +1191,15 @@ llvm::Value* CodeGenFunction::getValue(llvm::BasicBlock* BB, llvm::Value* Var) {
 
 void CodeGenFunction::setMature(llvm::BasicBlock* BB) {
   assert(!isMature(BB));
-  Mature.insert(BB);
 
   Var2Phi& Phis = Todos[BB];
   for (Var2Phi::iterator i = Phis.begin(), e = Phis.end(); i != e; ++i)
       fixPHI(BB, i->first, i->second);
+
+  Mature.insert(BB);
 }
 
-static llvm::Value* tryRemoveRedundantPHI(llvm::PHINode* const Phi) {
+llvm::Value* CodeGenFunction::tryRemoveRedundantPHI(llvm::PHINode* const Phi) {
   llvm::Value* Same = 0;
   for (llvm::User::const_op_iterator i = Phi->op_begin(), e = Phi->op_end(); i != e; ++i) {
     llvm::Value* const Val = *i;
@@ -1209,7 +1210,7 @@ static llvm::Value* tryRemoveRedundantPHI(llvm::PHINode* const Phi) {
     Same = Val;
   }
   if (!Same)
-    Same = llvm::UndefValue::get(Phi->getType());
+    return Phi;
   Phi->replaceAllUsesWith(Same);
   Phi->eraseFromParent();
   if (llvm::PHINode* const OpPhi = dyn_cast<llvm::PHINode>(Same))
