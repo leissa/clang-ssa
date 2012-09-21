@@ -1155,7 +1155,7 @@ static llvm::Type* getVarType(llvm::Value* Var) {
 }
 
 llvm::Value* CodeGenFunction::getValue(llvm::BasicBlock* BB, llvm::Value* Var) {
-  assert(dyn_cast<llvm::AllocaInst>(Var));
+  assert(isa<llvm::AllocaInst>(Var));
   Var2Val& Vars = Values[BB];
   Var2Val::iterator i = Vars.find(Var);
 

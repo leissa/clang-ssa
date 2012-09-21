@@ -574,7 +574,7 @@ public:
   BBs Mature;
 
   void setValue(llvm::BasicBlock* BB, llvm::Value* Var, llvm::Value* NewVal) {
-    assert(dyn_cast<llvm::AllocaInst>(Var));
+    assert(isa<llvm::AllocaInst>(Var));
     Values[BB][Var] = NewVal;
   }
   void setValue(llvm::Value* Var, llvm::Value* NewVal) {
