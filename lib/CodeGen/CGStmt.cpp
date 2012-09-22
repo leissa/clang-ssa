@@ -479,8 +479,8 @@ void CodeGenFunction::EmitWhileStmt(const WhileStmt &S) {
       EmitBoolCondBranch = false;
 
   // As long as the condition is true, go to the loop body.
-  llvm::BasicBlock *LoopBody = createBasicBlock("while.body");
   if (EmitBoolCondBranch) {
+    llvm::BasicBlock *LoopBody  = createBasicBlock("while.body");
     llvm::BasicBlock *ExitBlock = LoopExit.getBlock();
     if (ConditionScope.requiresCleanups())
       ExitBlock = createBasicBlock("while.exit");
@@ -491,13 +491,14 @@ void CodeGenFunction::EmitWhileStmt(const WhileStmt &S) {
       EmitBlock(ExitBlock);
       EmitBranchThroughCleanup(LoopExit);
     }
+
+    EmitBlock(LoopBody);
   }
  
   // Emit the loop body.  We have to emit this in a cleanup scope
   // because it might be a singleton DeclStmt.
   {
     RunCleanupsScope BodyScope(*this);
-    EmitBlock(LoopBody);
     EmitStmt(S.getBody());
   }
 
@@ -512,11 +513,6 @@ void CodeGenFunction::EmitWhileStmt(const WhileStmt &S) {
 
   // Emit the exit block.
   EmitBlock(LoopExit.getBlock(), BlockState_Deletable);
-
-  // The LoopHeader typically is just a branch if we skipped emitting
-  // a branch, try to erase it.
-  if (!EmitBoolCondBranch)
-    SimplifyForwardingBlocks(LoopHeader.getBlock());
 }
 
 void CodeGenFunction::EmitDoStmt(const DoStmt &S) {
