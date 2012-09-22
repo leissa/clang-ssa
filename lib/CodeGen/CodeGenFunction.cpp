@@ -1209,16 +1209,15 @@ llvm::Value* CodeGenFunction::tryRemoveRedundantPHI(llvm::PHINode* const Phi) {
       return Phi;
     Same = Val;
   }
-  if (!Same) {
-    llvm::BasicBlock* const BB = Phi->getParent();
-    if (pred_begin(BB) != pred_end(BB))
-      return Phi;
+  if (!Same)
     Same = llvm::UndefValue::get(Phi->getType());
-  }
   Phi->replaceAllUsesWith(Same);
   Phi->eraseFromParent();
-  if (llvm::PHINode* const OpPhi = dyn_cast<llvm::PHINode>(Same))
-    return tryRemoveRedundantPHI(OpPhi);
+  if (llvm::PHINode* const OpPhi = dyn_cast<llvm::PHINode>(Same)) {
+    llvm::BasicBlock* const OpBB = OpPhi->getParent();
+    if (isMature(OpBB) && OpBB->hasNUses(OpPhi->getNumIncomingValues()))
+      return tryRemoveRedundantPHI(OpPhi);
+  }
   return Same;
 }
 
