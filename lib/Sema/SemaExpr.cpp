@@ -1754,7 +1754,7 @@ ExprResult Sema::ActOnIdExpression(Scope *S,
 
   ExprResult Res = BuildDeclarationNameExpr(SS, R, ADL);
 
-  if (DeclRefExpr* DeclRef = dyn_cast<DeclRefExpr>(Res.get())) {
+  if (DeclRefExpr* const DeclRef = dyn_cast_or_null<DeclRefExpr>(Res.get())) {
     if (IsAddressOfOperand)
       DeclRef->getDecl()->AddressTaken = true;
   }
