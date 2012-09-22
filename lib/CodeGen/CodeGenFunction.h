@@ -1536,11 +1536,6 @@ public:
   /// label maps to.
   JumpDest getJumpDestForLabel(const LabelDecl *S);
 
-  /// SimplifyForwardingBlocks - If the given basic block is only a branch to
-  /// another basic block, simplify it. This assumes that no other code could
-  /// potentially reference the basic block.
-  void SimplifyForwardingBlocks(llvm::BasicBlock *BB);
-
   enum BlockState {
     BlockState_Finished,  ///< Block does not get any further predecessors.
     BlockState_Deletable, ///< Finished and will be deleted if it has no predecessors.
