@@ -257,6 +257,7 @@ void CodeGenFunction::EmitBranch(llvm::BasicBlock *Target) {
     // terminated, don't touch it.
   } else {
     // Otherwise, create a fall-through branch.
+    assert(!isMature(Target));
     Builder.CreateBr(Target);
   }
 
