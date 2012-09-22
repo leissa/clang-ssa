@@ -115,7 +115,7 @@ void CodeGenFunction::EmitStmt(const Stmt *S) {
     // the function.  This occurs with, e.g., labels that are not
     // reachable by fallthrough.
     if (incoming != outgoing && outgoing->use_empty()) {
-      outgoing->eraseFromParent();
+      eraseBB(outgoing);
       Builder.ClearInsertionPoint();
     }
     break;

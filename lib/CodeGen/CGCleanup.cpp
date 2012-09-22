@@ -423,7 +423,7 @@ static llvm::BasicBlock *SimplifyCleanupEntry(CodeGenFunction &CGF,
   Pred->getInstList().splice(Pred->end(), Entry->getInstList());
 
   // Kill the entry block.
-  Entry->eraseFromParent();
+  CGF.eraseBB(Entry);
 
   if (WasInsertBlock)
     CGF.Builder.SetInsertPoint(Pred);
