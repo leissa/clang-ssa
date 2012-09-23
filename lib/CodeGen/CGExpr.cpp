@@ -1562,8 +1562,7 @@ LValue CodeGenFunction::EmitDeclRefLValue(const DeclRefExpr *E) {
 
   if (const VarDecl *VD = dyn_cast<VarDecl>(ND)) {
     if (!VD->AddressTaken) {
-      CharUnits alignment = getContext().getDeclAlign(VD);
-      return MakeSSAVal(VD, E->getType(), alignment);
+      return MakeSSAVal(VD, E->getType());
     }
 
     // Check if this is a global variable.
@@ -1610,7 +1609,7 @@ LValue CodeGenFunction::EmitDeclRefLValue(const DeclRefExpr *E) {
       if (E->getDecl()->AddressTaken)
         LV = MakeAddrLValue(V, T, Alignment);
       else
-        LV = MakeSSAVal(E->getDecl(), T, Alignment);
+        LV = MakeSSAVal(E->getDecl(), T);
     }
 
     if (NonGCable) {

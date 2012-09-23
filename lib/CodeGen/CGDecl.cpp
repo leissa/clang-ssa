@@ -1024,7 +1024,7 @@ void CodeGenFunction::EmitAutoVarInit(const AutoVarEmission &emission) {
   }
 
   if (!constant) {
-    LValue lv = D.AddressTaken ? MakeAddrLValue(Loc, type, alignment) : MakeSSAVal(&D, type, alignment);
+    LValue lv = D.AddressTaken ? MakeAddrLValue(Loc, type, alignment) : MakeSSAVal(&D, type);
     lv.setNonGC(true);
     return EmitExprAsInit(Init, &D, lv, capturedByInit);
   }

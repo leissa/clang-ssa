@@ -258,8 +258,7 @@ public:
   }
 
   static LValue MakeSSAVal(const ValueDecl* Decl, QualType type,
-                         CharUnits alignment, ASTContext &Context,
-                         llvm::MDNode *TBAAInfo = 0) {
+                           ASTContext &Context) {
     Qualifiers qs = type.getQualifiers();
     qs.setObjCGCAttr(Context.getObjCGCAttrKind(type));
 
@@ -267,7 +266,7 @@ public:
     R.Decl = Decl;
     R.LVType = Simple;
     R.V = 0;
-    R.Initialize(type, qs, alignment, TBAAInfo);
+    R.Initialize(type, qs);
     return R;
   }
 
