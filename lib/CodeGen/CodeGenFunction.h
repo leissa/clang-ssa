@@ -588,7 +588,6 @@ public:
   }
   llvm::Value* tryRemoveRedundantPHI(llvm::PHINode* Phi);
   llvm::Value* fixPHI(llvm::BasicBlock* BB, const ValueDecl* Var, llvm::PHINode* Phi);
-  llvm::Type* getType(const ValueDecl* Decl);
 
   void eraseBB(llvm::BasicBlock* const BB) {
     Mature.erase(BB);

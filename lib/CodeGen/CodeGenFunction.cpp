@@ -1151,42 +1151,28 @@ llvm::Value *CodeGenFunction::EmitFieldAnnotations(const FieldDecl *D,
   return V;
 }
 
-llvm::Type* CodeGenFunction::getType(const ValueDecl* Decl) {
-  return getTypes().ConvertType(Decl->getType());
-}
-
 llvm::Value* CodeGenFunction::getValue(llvm::BasicBlock* BB, const ValueDecl* Var) {
-  Var2Val& Vars = Values[BB];
-  Var2Val::iterator i = Vars.find(Var);
-
-  if (i != Vars.end())
+  Var2Val&                Val = Values[BB];
+  Var2Val::iterator const i   = Val.find(Var);
+  if (i != Val.end())
     return i->second;
 
-  llvm::Type* Type = getType(Var);
-
-  bool mature = isMature(BB);
-  llvm::BasicBlock* single_pred = BB->getSinglePredecessor();
-
-  // not mature or more than one predecessor
+  bool              const mature      = isMature(BB);
+  llvm::BasicBlock* const single_pred = BB->getSinglePredecessor();
   if (!mature || !single_pred) {
-    llvm::PHINode* Phi; 
-    if (BB->empty())
-      Phi = llvm::PHINode::Create(Type, 0, Var->getName(), BB);
-    else
-      Phi = llvm::PHINode::Create(Type, 0, Var->getName(), BB->begin());
-
+    llvm::Type*    const Type = ConvertType(Var->getType());
+    llvm::PHINode* const Phi  = BB->empty() ?
+      llvm::PHINode::Create(Type, 0, Var->getName(), BB) :
+      llvm::PHINode::Create(Type, 0, Var->getName(), BB->begin());
     setValue(BB, Var, Phi);
-
-    if (mature)
-      return fixPHI(BB, Var, Phi);
-    else
-      return Todos[BB][Var] = Phi;
+    return mature ?
+      fixPHI(BB, Var, Phi) :
+      Todos[BB][Var] = Phi;
   }
 
-  llvm::Value* result = getValue(single_pred, Var);
-  setValue(BB, Var, result);
-
-  return result;
+  llvm::Value* const Res = getValue(single_pred, Var);
+  setValue(BB, Var, Res);
+  return Res;
 }
 
 void CodeGenFunction::setMature(llvm::BasicBlock* BB) {
