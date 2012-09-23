@@ -360,7 +360,7 @@ class LabelDecl : public NamedDecl {
 
   LabelDecl(DeclContext *DC, SourceLocation IdentL, IdentifierInfo *II,
             LabelStmt *S, SourceLocation StartL)
-    : NamedDecl(Label, DC, IdentL, II), TheStmt(S), LocStart(StartL) {}
+    : NamedDecl(Label, DC, IdentL, II), TheStmt(S), LocStart(StartL), NUses(0) {}
 
 public:
   static LabelDecl *Create(ASTContext &C, DeclContext *DC,
@@ -379,6 +379,8 @@ public:
   SourceRange getSourceRange() const LLVM_READONLY {
     return SourceRange(LocStart, getLocation());
   }
+
+  unsigned NUses;
 
   // Implement isa/cast/dyncast/etc.
   static bool classof(const Decl *D) { return classofKind(D->getKind()); }

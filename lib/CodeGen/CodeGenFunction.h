@@ -1536,6 +1536,10 @@ public:
   /// label maps to.
   JumpDest getJumpDestForLabel(const LabelDecl *S);
 
+  /// Tick off one use of the label and mature the label block iff this was the
+  /// last use.
+  void CompleteJumpToLabel(LabelDecl* D);
+
   enum BlockState {
     BlockState_Finished,  ///< Block does not get any further predecessors.
     BlockState_Deletable, ///< Finished and will be deleted if it has no predecessors.

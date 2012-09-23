@@ -316,8 +316,16 @@ void CodeGenFunction::EmitLabel(const LabelDecl *D) {
 }
 
 
+void CodeGenFunction::CompleteJumpToLabel(LabelDecl* const D) {
+  if (--D->NUses == 0)
+    setMature(LabelMap[D].getBlock());
+}
+
+
 void CodeGenFunction::EmitLabelStmt(const LabelStmt &S) {
-  EmitLabel(S.getDecl());
+  LabelDecl* const D = S.getDecl();
+  EmitLabel(D);
+  CompleteJumpToLabel(D);
   EmitStmt(S.getSubStmt());
 }
 
@@ -332,7 +340,9 @@ void CodeGenFunction::EmitGotoStmt(const GotoStmt &S) {
   if (HaveInsertPoint())
     EmitStopPoint(&S);
 
-  EmitBranchThroughCleanup(getJumpDestForLabel(S.getLabel()));
+  LabelDecl* const D = S.getLabel();
+  EmitBranchThroughCleanup(getJumpDestForLabel(D));
+  CompleteJumpToLabel(D);
 }
 
 

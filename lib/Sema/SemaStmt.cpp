@@ -352,6 +352,8 @@ Sema::ActOnLabelStmt(SourceLocation IdentLoc, LabelDecl *TheDecl,
     return Owned(SubStmt);
   }
 
+  ++TheDecl->NUses;
+
   // Otherwise, things are good.  Fill in the declaration and return it.
   LabelStmt *LS = new (Context) LabelStmt(IdentLoc, TheDecl, SubStmt);
   TheDecl->setStmt(LS);
@@ -1640,6 +1642,7 @@ StmtResult Sema::ActOnGotoStmt(SourceLocation GotoLoc,
                                LabelDecl *TheDecl) {
   getCurFunction()->setHasBranchIntoScope();
   TheDecl->setUsed();
+  ++TheDecl->NUses;
   return Owned(new (Context) GotoStmt(TheDecl, GotoLoc, LabelLoc));
 }
 
