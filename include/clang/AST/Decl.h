@@ -534,7 +534,7 @@ protected:
   ValueDecl(Kind DK, DeclContext *DC, SourceLocation L,
             DeclarationName N, QualType T)
     : NamedDecl(DK, DC, L, N), DeclType(T), 
-    AddressTaken(!T.getTypePtr()->isScalarType()) {}
+    AddressTaken(!T.getTypePtr()->isScalarType() || T.getTypePtr()->isAnyComplexType()) {}
 public:
   QualType getType() const { return DeclType; }
   void setType(QualType newType) { DeclType = newType; }
