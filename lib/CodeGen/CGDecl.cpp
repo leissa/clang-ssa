@@ -908,7 +908,7 @@ CodeGenFunction::EmitAutoVarAlloca(const VarDecl &D) {
         DI->EmitDeclareOfAutoVariable(&D, DeclPtr, Builder);
     }
 
-  if (D.hasAttr<AnnotateAttr>())
+  if (D.AddressTaken && D.hasAttr<AnnotateAttr>())
       EmitVarAnnotations(&D, emission.Address);
 
   return emission;
