@@ -574,6 +574,23 @@ public:
   BBs Mature;
   BBs Visited;
 
+  typedef std::vector<llvm::BasicBlock*> BBStack;
+  BBStack SCCStack;
+
+  struct BlockID {
+
+    BlockID() {}
+    BlockID(size_t i) : Pre(i), Low(i) {}
+
+    size_t Pre;
+    size_t Low;
+  };
+  typedef llvm::DenseMap<llvm::BasicBlock*, BlockID> BB2BlockID;
+  BB2BlockID SCC;
+  size_t SCCCounter;
+
+  llvm::Value* WalkSCC(const ValueDecl* Var, BB2Val& values, llvm::BasicBlock* BB);
+
   void setValue(llvm::BasicBlock* BB, const ValueDecl* Var, llvm::Value* NewVal) {
     Values[Var][BB] = NewVal;
   }
@@ -583,7 +600,7 @@ public:
   bool isMature(llvm::BasicBlock* const BB) { return Mature.find(BB) != Mature.end(); }
   void setMature(llvm::BasicBlock* BB);
 
-	llvm::PHINode* newPhi(llvm::BasicBlock* BB, ValueDecl const* Var);
+  llvm::PHINode* newPhi(llvm::BasicBlock* BB, ValueDecl const* Var);
   llvm::Value* getValue(llvm::BasicBlock* BB, const ValueDecl* Var);
   llvm::Value* getValue(const ValueDecl* Var) { 
     return getValue(Builder.GetInsertBlock(), Var);

@@ -1194,6 +1194,7 @@ llvm::Value* CodeGenFunction::getValue(llvm::BasicBlock* BB, const ValueDecl* Va
           llvm::Value*      const Val  = getValue(Pred, Var);
           if (Val == Same)
             continue;
+          // do we see our own Phi?
           BB2Val::iterator const k = VarMap.find(BB);
           if (k != VarMap.end() && Val == k->second)
             continue;
@@ -1230,13 +1231,131 @@ removeCyclePhi:
       }
       break;
 
-    case CodeGenOptions::SCC:
-      // TODO
+    case CodeGenOptions::SCC: {
+      SCCCounter = 0;
+      Res = WalkSCC(Var, Values[Var], BB);
+      break;
+    }
 
     default:
       abort();
     }
   }
+  setValue(BB, Var, Res);
+  return Res;
+}
+
+llvm::Value* CodeGenFunction::WalkSCC(const ValueDecl* Var, BB2Val& VarMap, llvm::BasicBlock* BB) {
+  llvm::errs() << Var->getName() << '\n';
+  {
+    BB2Val::iterator i = VarMap.find(BB);
+    if (i != VarMap.end())
+      return i->second;
+  }
+
+  if (SCC.find(BB) != SCC.end())
+    return 0;
+
+  SCCStack.push_back(BB);
+
+  llvm::Value*        Res;
+  BlockID&            CurID = SCC[BB] = BlockID(SCCCounter++);
+  llvm::pred_iterator i     = pred_begin(BB);
+  llvm::pred_iterator e     = pred_end(BB);
+  if (i == e) {
+    Res = llvm::UndefValue::get(ConvertType(Var->getType()));
+  } else {
+    llvm::BasicBlock* const FirstPred = *i;
+    llvm::Value*            Same      = WalkSCC(Var, VarMap, FirstPred);
+    bool                    Cyclic    = !Same;
+    size_t                  Low       = Cyclic ? SCC[FirstPred].Low : CurID.Pre;
+    while (++i != e) {
+      llvm::BasicBlock* const Pred  = *i;
+      llvm::Value*      const Value = WalkSCC(Var, VarMap, Pred);
+      if (!Value) {
+        Cyclic = true;
+        size_t const PredLow = SCC[Pred].Low;
+        if (Low > PredLow) // TODO is the if necessary?
+          Low = PredLow;
+      } else if (Value != Same) {
+        Same = 0;
+      }
+    }
+
+    if (Cyclic) {
+      if (Low < CurID.Pre) {
+        CurID.Low = Low;
+        return 0;
+      }
+
+      std::vector<llvm::PHINode*> todo;
+
+      llvm::Value* Same = 0;
+      BBStack::iterator e = SCCStack.end();
+      BBStack::iterator i = e;
+      for (;;) {
+        llvm::BasicBlock* const Cur = *--i;
+        for (llvm::pred_iterator k = pred_begin(Cur), e = pred_end(Cur); k != e; ++k) {
+          BB2Val::iterator const ValIter = VarMap.find(*k);
+          if (ValIter == VarMap.end())
+            continue;
+          llvm::Value* const Val = ValIter->second;
+          if (Same == Val)
+            continue;
+          if (Same) {
+            for (BBStack::iterator i = SCCStack.end();;) {
+              llvm::BasicBlock* const Cur = *--i;
+              for (llvm::pred_iterator k = pred_begin(Cur), e = pred_end(Cur); k != e; ++k) {
+                BB2Val::iterator const ValIter = VarMap.find(*k);
+                if (ValIter == VarMap.end())
+                  continue;
+
+                llvm::PHINode* phi = newPhi(Cur, Var);
+                todo.push_back(phi);
+                setValue(Cur, Var, phi);
+                break;
+              }
+              if (Cur == BB)
+                break;
+            }
+
+            const_cast<CodeGenOptions&>(CGM.getCodeGenOpts()).SSA = CodeGenOptions::Marker;
+            for (size_t i = 0, e = todo.size(); i != e; ++i) {
+              llvm::PHINode* phi = todo[i];
+              llvm::BasicBlock* BB = phi->getParent();
+              for (llvm::pred_iterator i = llvm::pred_begin(BB), e = llvm::pred_end(BB); i != e; ++i)
+                phi->addIncoming(getValue(*i, Var), *i);
+            }
+            const_cast<CodeGenOptions&>(CGM.getCodeGenOpts()).SSA = CodeGenOptions::SCC;
+            return VarMap[BB];
+          }
+          Same = Val;
+        }
+        if (Cur == BB)
+            break;
+      }
+
+      Res = Same ? Same : llvm::UndefValue::get(ConvertType(Var->getType()));
+
+      for (BBStack::iterator k = i; k != e; ++k)
+        setValue(*k, Var, Res);
+
+      SCCStack.erase(i, e);
+    } else {
+      SCCStack.pop_back();
+      if (Same) {
+        Res = Same;
+      } else {
+        llvm::PHINode* const Phi = newPhi(BB, Var);
+        for (llvm::pred_iterator i = pred_begin(BB); i != e; ++i) {
+          llvm::BasicBlock* const Pred = *i;
+          Phi->addIncoming(VarMap[Pred], Pred);
+        }
+        Res = Phi;
+      }
+    }
+  }
+
   setValue(BB, Var, Res);
   return Res;
 }
