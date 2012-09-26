@@ -20,6 +20,7 @@
 #include "CGObjCRuntime.h"
 #include "TargetInfo.h"
 #include "clang/AST/ASTContext.h"
+#include "clang/AST/Decl.h"
 #include "clang/AST/DeclObjC.h"
 #include "clang/Frontend/CodeGenOptions.h"
 #include "llvm/Intrinsics.h"
@@ -1561,9 +1562,8 @@ LValue CodeGenFunction::EmitDeclRefLValue(const DeclRefExpr *E) {
   }
 
   if (const VarDecl *VD = dyn_cast<VarDecl>(ND)) {
-    if (!VD->AddressTaken) {
+    if (!buildAlloca(*VD))
       return MakeSSAVal(VD, E->getType());
-    }
 
     // Check if this is a global variable.
     if (VD->hasExternalStorage() || VD->isFileVarDecl()) 
@@ -1606,7 +1606,7 @@ LValue CodeGenFunction::EmitDeclRefLValue(const DeclRefExpr *E) {
       V = LI;
       LV = MakeNaturalAlignAddrLValue(V, T);
     } else {
-      if (E->getDecl()->AddressTaken)
+      if (buildAlloca(*E->getDecl()))
         LV = MakeAddrLValue(V, T, Alignment);
       else
         LV = MakeSSAVal(E->getDecl(), T);

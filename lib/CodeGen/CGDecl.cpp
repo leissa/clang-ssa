@@ -87,11 +87,7 @@ void CodeGenFunction::EmitDecl(const Decl &D) {
     return;
 
   case Decl::Var: {
-    VarDecl &VD = cast<VarDecl>(D);
-
-    if (CGM.getCodeGenOpts().SSA == CodeGenOptions::Alloca)
-      VD.AddressTaken = true;
-
+    const VarDecl &VD = cast<VarDecl>(D);
     assert(VD.isLocalVarDecl() &&
            "Should not see file-scope variables inside a function!");
     return EmitVarDecl(VD);
@@ -845,7 +841,7 @@ CodeGenFunction::EmitAutoVarAlloca(const VarDecl &D) {
           LTy = BuildByRefType(&D);
 
         llvm::AllocaInst *Alloc = 0;
-        if (D.AddressTaken) {
+        if (buildAlloca(D)) {
           Alloc = CreateTempAlloca(LTy);
           Alloc->setName(D.getName());
 
@@ -912,7 +908,7 @@ CodeGenFunction::EmitAutoVarAlloca(const VarDecl &D) {
         DI->EmitDeclareOfAutoVariable(&D, DeclPtr, Builder);
     }
 
-  if (D.AddressTaken && D.hasAttr<AnnotateAttr>())
+  if (buildAlloca(D) && D.hasAttr<AnnotateAttr>())
       EmitVarAnnotations(&D, emission.Address);
 
   return emission;
@@ -1028,7 +1024,7 @@ void CodeGenFunction::EmitAutoVarInit(const AutoVarEmission &emission) {
   }
 
   if (!constant) {
-    LValue lv = D.AddressTaken ? MakeAddrLValue(Loc, type, alignment) : MakeSSAVal(&D, type);
+    LValue lv = buildAlloca(D) ? MakeAddrLValue(Loc, type, alignment) : MakeSSAVal(&D, type);
     lv.setNonGC(true);
     return EmitExprAsInit(Init, &D, lv, capturedByInit);
   }
@@ -1502,7 +1498,7 @@ void CodeGenFunction::EmitParmDecl(const VarDecl &D, llvm::Value *Arg,
       CodeGenFunction::hasAggregateLLVMType(Ty)) {
     DeclPtr = Arg;
   } else {
-    if (!D.AddressTaken) {
+    if (!buildAlloca(D)) {
       setValue(&D, Arg);
       return;
     }
