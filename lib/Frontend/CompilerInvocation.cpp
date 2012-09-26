@@ -1159,6 +1159,24 @@ static bool ParseCodeGenArgs(CodeGenOptions &Opts, ArgList &Args, InputKind IK,
   Opts.CoverageFile = Args.getLastArgValue(OPT_coverage_file);
   Opts.DebugCompilationDir = Args.getLastArgValue(OPT_fdebug_compilation_dir);
   Opts.LinkBitcodeFile = Args.getLastArgValue(OPT_mlink_bitcode_file);
+
+  if (Arg *A = Args.getLastArg(OPT_fssa)) {
+    StringRef Name = A->getValue(Args);
+    CodeGenOptions::SSAAlgo Value = llvm::StringSwitch<CodeGenOptions::SSAAlgo>(Name)
+      .Case("alloca", CodeGenOptions::Alloca)
+      .Case("simple", CodeGenOptions::Simple)
+      .Case("marker", CodeGenOptions::Marker)
+      .Case("scc",    CodeGenOptions::SCC)
+      .Default(CodeGenOptions::Error);
+    if (Value == CodeGenOptions::Error) {
+      Diags.Report(diag::err_drv_invalid_value)
+        << A->getAsString(Args) << Name;
+      Success = false;
+    } else {
+      Opts.SSA = Value;
+    }
+  }
+
   Opts.StackRealignment = Args.hasArg(OPT_mstackrealign);
   if (Arg *A = Args.getLastArg(OPT_mstack_alignment)) {
     StringRef Val = A->getValue(Args);

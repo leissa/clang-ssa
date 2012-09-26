@@ -29,6 +29,14 @@ public:
     OnlyAlwaysInlining  // Only run the always inlining pass.
   };
 
+  enum SSAAlgo {
+    Alloca,
+    Simple,
+    Marker,
+    SCC,
+    Error
+  };
+
   enum ObjCDispatchMethodKind {
     Legacy = 0,
     NonLegacy = 1,
@@ -108,6 +116,8 @@ public:
 
   unsigned VerifyModule      : 1; /// Control whether the module should be run
                                   /// through the LLVM Verifier.
+
+  unsigned SSA : 2;               /// Select SSA construction algorithm.
 
   unsigned StackRealignment  : 1; /// Control whether to permit stack
                                   /// realignment.
@@ -216,6 +226,7 @@ public:
     VerifyModule = 1;
     StackRealignment = 0;
     StackAlignment = 0;
+    SSA = Simple;
 
     Inlining = NoInlining;
     RelocationModel = "pic";

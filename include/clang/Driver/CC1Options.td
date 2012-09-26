@@ -178,6 +178,8 @@ def ffunction_sections : Flag<"-ffunction-sections">,
   HelpText<"Place each function in its own section (ELF Only)">;
 def fdata_sections : Flag<"-fdata-sections">,
   HelpText<"Place each data in its own section (ELF Only)">;
+def fssa : Separate<"-fssa">,
+  HelpText<"Select the code generation algorithm (alloc,simple,marker,scc)">;
 def fstrict_enums : Flag<"-fstrict-enums">,
   HelpText<"Enable optimizations based on the strict definition of an enum's "
            "value range.">;

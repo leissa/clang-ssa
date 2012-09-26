@@ -1330,6 +1330,11 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
   // Select the appropriate action.
   bool IsRewriter = false;
   bool IsModernRewriter = false;
+
+  if (Arg *A = Args.getLastArg(options::OPT_fssa_EQ)) {
+    CmdArgs.push_back("-fssa");
+    CmdArgs.push_back(A->getValue(Args));
+  }
   
   if (isa<AnalyzeJobAction>(JA)) {
     assert(JA.getType() == types::TY_Plist && "Invalid output type.");
@@ -3377,6 +3382,7 @@ void darwin::CC1::AddCC1OptionsArgs(const ArgList &Args, ArgStringList &CmdArgs,
                                     const InputInfoList &Inputs,
                                     const ArgStringList &OutputArgs) const {
   const Driver &D = getToolChain().getDriver();
+
 
   // Derived from cc1_options spec.
   if (Args.hasArg(options::OPT_fast) ||

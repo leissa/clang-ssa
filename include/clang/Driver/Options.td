@@ -512,6 +512,8 @@ def fshow_source_location : Flag<"-fshow-source-location">, Group<f_Group>;
 def fspell_checking : Flag<"-fspell-checking">, Group<f_Group>;
 def fsigned_bitfields : Flag<"-fsigned-bitfields">, Group<f_Group>;
 def fsigned_char : Flag<"-fsigned-char">, Group<f_Group>;
+def fssa_EQ : Joined<"-fssa=">, Group<f_Group>,
+  HelpText<"Select the code generation algorithm (alloc,simple,marker,scc)">;
 def fstack_protector_all : Flag<"-fstack-protector-all">, Group<f_Group>;
 def fstack_protector : Flag<"-fstack-protector">, Group<f_Group>;
 def fstrict_aliasing : Flag<"-fstrict-aliasing">, Group<f_Group>;
