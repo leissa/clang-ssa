@@ -87,7 +87,11 @@ void CodeGenFunction::EmitDecl(const Decl &D) {
     return;
 
   case Decl::Var: {
-    const VarDecl &VD = cast<VarDecl>(D);
+    VarDecl &VD = cast<VarDecl>(D);
+
+    if (CGM.getCodeGenOpts().SSA == CodeGenOptions::Alloca)
+      VD.AddressTaken = true;
+
     assert(VD.isLocalVarDecl() &&
            "Should not see file-scope variables inside a function!");
     return EmitVarDecl(VD);
