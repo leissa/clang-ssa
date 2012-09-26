@@ -562,9 +562,9 @@ public:
   CodeGenModule &CGM;  // Per-module state.
   const TargetInfo &Target;
 
-  typedef llvm::DenseMap<const ValueDecl*, llvm::TrackingVH<llvm::Value> > Var2Val;
-  typedef llvm::DenseMap<llvm::BasicBlock*, Var2Val> BB2Var2Val;
-  BB2Var2Val Values;
+  typedef llvm::DenseMap<llvm::BasicBlock*, llvm::TrackingVH<llvm::Value> > BB2Val;
+  typedef llvm::DenseMap<const ValueDecl*, BB2Val> Var2BB2Val;
+  Var2BB2Val Values;
 
   typedef llvm::DenseMap<const ValueDecl*, llvm::PHINode*> Var2Phi;
   typedef llvm::DenseMap<llvm::BasicBlock*, Var2Phi> BB2Var2Phi;
@@ -572,9 +572,10 @@ public:
 
   typedef llvm::DenseSet<llvm::BasicBlock*> BBs;
   BBs Mature;
+  BBs Visited;
 
   void setValue(llvm::BasicBlock* BB, const ValueDecl* Var, llvm::Value* NewVal) {
-    Values[BB][Var] = NewVal;
+    Values[Var][BB] = NewVal;
   }
   void setValue(const ValueDecl* Var, llvm::Value* NewVal) {
     setValue(Builder.GetInsertBlock(), Var, NewVal);
@@ -582,6 +583,7 @@ public:
   bool isMature(llvm::BasicBlock* const BB) { return Mature.find(BB) != Mature.end(); }
   void setMature(llvm::BasicBlock* BB);
 
+	llvm::PHINode* newPhi(llvm::BasicBlock* BB, ValueDecl const* Var);
   llvm::Value* getValue(llvm::BasicBlock* BB, const ValueDecl* Var);
   llvm::Value* getValue(const ValueDecl* Var) { 
     return getValue(Builder.GetInsertBlock(), Var);

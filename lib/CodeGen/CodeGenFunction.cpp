@@ -1151,26 +1151,92 @@ llvm::Value *CodeGenFunction::EmitFieldAnnotations(const FieldDecl *D,
   return V;
 }
 
+llvm::PHINode* CodeGenFunction::newPhi(llvm::BasicBlock* const BB, ValueDecl const* const Var)
+{
+  llvm::Type*    const Type = ConvertType(Var->getType());
+  return BB->empty() ?
+    llvm::PHINode::Create(Type, 0, Var->getName(), BB) :
+    llvm::PHINode::Create(Type, 0, Var->getName(), BB->begin());
+}
+
 llvm::Value* CodeGenFunction::getValue(llvm::BasicBlock* BB, const ValueDecl* Var) {
-  Var2Val&                Val = Values[BB];
-  Var2Val::iterator const i   = Val.find(Var);
-  if (i != Val.end())
+  BB2Val&                VarMap = Values[Var];
+  BB2Val::iterator const i      = VarMap.find(BB);
+  if (i != VarMap.end())
     return i->second;
 
-  bool              const mature      = isMature(BB);
-  llvm::BasicBlock* const single_pred = BB->getSinglePredecessor();
-  if (!mature || !single_pred) {
-    llvm::Type*    const Type = ConvertType(Var->getType());
-    llvm::PHINode* const Phi  = BB->empty() ?
-      llvm::PHINode::Create(Type, 0, Var->getName(), BB) :
-      llvm::PHINode::Create(Type, 0, Var->getName(), BB->begin());
-    setValue(BB, Var, Phi);
-    return mature ?
-      fixPHI(BB, Var, Phi) :
-      Todos[BB][Var] = Phi;
-  }
+  llvm::Value* Res;
+  if (!isMature(BB)) {
+    llvm::PHINode* const Phi = newPhi(BB, Var);
+    Todos[BB][Var] = Phi;
+    Res = Phi;
+  } else {
+    switch (CGM.getCodeGenOpts().SSA) {
+    case CodeGenOptions::Simple:
+      if (llvm::BasicBlock* const SinglePred = BB->getSinglePredecessor()) {
+        Res = getValue(SinglePred, Var);
+      } else {
+        llvm::PHINode* const Phi = newPhi(BB, Var);
+        setValue(BB, Var, Phi);
+        Res = fixPHI(BB, Var, Phi);
+      }
+      break;
 
-  llvm::Value* const Res = getValue(single_pred, Var);
+    case CodeGenOptions::Marker:
+      if (Visited.find(BB) != Visited.end()) {
+        Res = newPhi(BB, Var);
+      } else {
+        Visited.insert(BB);
+
+        llvm::Value* Same = 0;
+        for (llvm::pred_iterator i = llvm::pred_begin(BB), e = llvm::pred_end(BB); i != e; ++i) {
+          llvm::BasicBlock* const Pred = *i;
+          llvm::Value*      const Val  = getValue(Pred, Var);
+          if (Val == Same)
+            continue;
+          BB2Val::iterator const k = VarMap.find(BB);
+          if (k != VarMap.end() && Val == k->second)
+            continue;
+          Same = Same ? (llvm::Value*)-1 : Val;
+        }
+
+        llvm::PHINode* Phi = dyn_cast_or_null<llvm::PHINode>(&*VarMap[BB]);
+        if (!Same) {
+          Res = llvm::UndefValue::get(ConvertType(Var->getType()));
+          goto removeCyclePhi;
+        } else if (Same == (llvm::Value*)-1) {
+          if (!Phi)
+            Phi = newPhi(BB, Var);
+          for (llvm::pred_iterator i = llvm::pred_begin(BB), e = llvm::pred_end(BB); i != e; ++i) {
+            llvm::BasicBlock* const Pred = *i;
+            Phi->addIncoming(VarMap[Pred], Pred);
+          }
+          Res = Phi;
+        } else {
+          Res = Same;
+removeCyclePhi:
+          if (Phi) {
+            Phi->replaceAllUsesWith(Res);
+            Phi->eraseFromParent();
+          }
+          if (llvm::PHINode* const OpPhi = dyn_cast<llvm::PHINode>(Res)) {
+            llvm::BasicBlock* const OpBB = OpPhi->getParent();
+            if (isMature(OpBB) && OpBB->hasNUses(OpPhi->getNumIncomingValues()))
+              Res = tryRemoveRedundantPHI(OpPhi);
+          }
+        }
+
+        Visited.erase(BB);
+      }
+      break;
+
+    case CodeGenOptions::SCC:
+      // TODO
+
+    default:
+      abort();
+    }
+  }
   setValue(BB, Var, Res);
   return Res;
 }
