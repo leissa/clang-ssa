@@ -131,11 +131,6 @@ public:
     if (llvm::ZExtInst *ZI = dyn_cast<llvm::ZExtInst>(V)) {
       if (ZI->getOperand(0)->getType() == Builder.getInt1Ty()) {
         Value *Result = ZI->getOperand(0);
-        // If there aren't any more uses, zap the instruction to save space.
-        // Note that there can be more uses, for example if this
-        // is the result of an assignment.
-        if (ZI->use_empty())
-          ZI->eraseFromParent();
         return Result;
       }
     }
