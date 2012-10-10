@@ -733,6 +733,7 @@ void CodeGenFunction::EmitReturnOfRValue(RValue RV, QualType Ty) {
 void CodeGenFunction::EmitReturnStmt(const ReturnStmt &S) {
   // Emit the result value, even if unused, to evalute the side effects.
   const Expr *RV = S.getRetValue();
+  llvm::Value* retval;
 
   // FIXME: Clean this up by using an LValue for ReturnTemp,
   // EmitStoreThroughLValue, and EmitAnyExpr.
@@ -746,20 +747,36 @@ void CodeGenFunction::EmitReturnStmt(const ReturnStmt &S) {
     // that the cleanup code should not destroy the variable.
     if (llvm::Value *NRVOFlag = NRVOFlags[S.getNRVOCandidate()])
       Builder.CreateStore(Builder.getTrue(), NRVOFlag);
-  } else if (!ReturnValue) {
+  } else if (FnRetTy->isVoidType()) {
     // Make sure not to return anything, but evaluate the expression
     // for side effects.
     if (RV)
       EmitAnyExpr(RV);
   } else if (RV == 0) {
-    // Do nothing (return value is left uninitialized)
+    if (!hasAggregateLLVMType(FnRetTy)) {
+      retval = llvm::UndefValue::get(ConvertType(FnRetTy));
+      goto return_scalar;
+    }
   } else if (FnRetTy->isReferenceType()) {
     // If this function returns a reference, take the address of the expression
     // rather than the value.
     RValue Result = EmitReferenceBindingToExpr(RV, /*InitializedDecl=*/0);
     Builder.CreateStore(Result.getScalarVal(), ReturnValue);
   } else if (!hasAggregateLLVMType(RV->getType())) {
-    Builder.CreateStore(EmitScalarExpr(RV), ReturnValue);
+    //Builder.CreateStore(EmitScalarExpr(RV), ReturnValue);
+    retval = EmitScalarExpr(RV);
+return_scalar:
+    llvm::BasicBlock* retBB = ReturnBlock.getBlock();
+    if (!ReturnValue)
+      ReturnValue = retval;
+    else {
+      if (llvm::BasicBlock* predRet = retBB->getSinglePredecessor()) {
+        llvm::PHINode* phi = llvm::PHINode::Create(retval->getType(), 0, "retval", retBB);
+        phi->addIncoming(ReturnValue, predRet);
+        ReturnValue = phi;
+      }
+      cast<llvm::PHINode>(ReturnValue)->addIncoming(retval, Builder.GetInsertBlock());
+    }
   } else if (RV->getType()->isAnyComplexType()) {
     EmitComplexExprIntoAddr(RV, ReturnValue, false);
   } else {

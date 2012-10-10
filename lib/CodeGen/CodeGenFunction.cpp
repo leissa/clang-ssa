@@ -112,6 +112,23 @@ void CodeGenFunction::EmitReturnBlock() {
   if (CurBB) {
     assert(!CurBB->getTerminator() && "Unexpected terminated block.");
 
+    llvm::UndefValue* undef = llvm::UndefValue::get(ConvertType(FnRetTy));
+    llvm::BasicBlock* retBB = ReturnBlock.getBlock();
+
+    if (!hasAggregateLLVMType(FnRetTy)) {
+      if (!ReturnValue)
+        ReturnValue = undef;
+      else {
+        if (llvm::BasicBlock* predRet = retBB->getSinglePredecessor()) {
+          llvm::PHINode* phi = llvm::PHINode::Create(undef->getType(), 0, "retval", retBB);
+          phi->addIncoming(ReturnValue, predRet);
+          ReturnValue = phi;
+        }
+        cast<llvm::PHINode>(ReturnValue)->addIncoming(undef, Builder.GetInsertBlock());
+      }
+    }
+    Builder.CreateBr(retBB);
+#if 0
     // We have a valid insert point, reuse it if it is empty or there are no
     // explicit jumps to the return block.
     if (CurBB->empty() || ReturnBlock.getBlock()->use_empty()) {
@@ -120,6 +137,7 @@ void CodeGenFunction::EmitReturnBlock() {
     } else
       EmitBlock(ReturnBlock.getBlock());
     return;
+#endif
   }
 
   // Otherwise, if the return block is the target of a single direct
@@ -339,7 +357,7 @@ void CodeGenFunction::StartFunction(GlobalDecl GD, QualType RetTy,
     // This reduces code size, and affects correctness in C++.
     ReturnValue = CurFn->arg_begin();
   } else {
-    ReturnValue = CreateIRTemp(RetTy, "retval");
+    ReturnValue = hasAggregateLLVMType(CurFnInfo->getReturnType()) ? CreateIRTemp(RetTy, "retval") : 0;
 
     // Tell the epilog emitter to autorelease the result.  We do this
     // now so that various specialized functions can suppress it

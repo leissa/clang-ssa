@@ -1447,7 +1447,7 @@ static llvm::StoreInst *findDominatingStoreToReturnValue(CodeGenFunction &CGF) {
 
 void CodeGenFunction::EmitFunctionEpilog(const CGFunctionInfo &FI) {
   // Functions with no result always return void.
-  if (ReturnValue == 0) {
+  if (FnRetTy->isVoidType()) {
     Builder.CreateRetVoid();
     return;
   }
@@ -1495,7 +1495,8 @@ void CodeGenFunction::EmitFunctionEpilog(const CGFunctionInfo &FI) {
 
       // Otherwise, we have to do a simple load.
       } else {
-        RV = Builder.CreateLoad(ReturnValue);
+        //RV = Builder.CreateLoad(ReturnValue);
+        RV = ReturnValue;
       }
     } else {
       llvm::Value *V = ReturnValue;
