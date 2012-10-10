@@ -112,19 +112,23 @@ void CodeGenFunction::EmitReturnBlock() {
   if (CurBB) {
     assert(!CurBB->getTerminator() && "Unexpected terminated block.");
 
-    llvm::UndefValue* undef = llvm::UndefValue::get(ConvertType(FnRetTy));
+    llvm::Value* val = llvm::UndefValue::get(ConvertType(FnRetTy));
+    if (const FunctionDecl *FD = dyn_cast_or_null<FunctionDecl>(CurFuncDecl))
+      if (FD->hasImplicitReturnZero())
+        val = llvm::Constant::getNullValue(ConvertType(FnRetTy));
+
     llvm::BasicBlock* retBB = ReturnBlock.getBlock();
 
     if (!hasAggregateLLVMType(FnRetTy)) {
       if (!ReturnValue)
-        ReturnValue = undef;
+        ReturnValue = val;
       else {
         if (llvm::BasicBlock* predRet = retBB->getSinglePredecessor()) {
-          llvm::PHINode* phi = llvm::PHINode::Create(undef->getType(), 0, "retval", retBB);
+          llvm::PHINode* phi = llvm::PHINode::Create(val->getType(), 0, "retval", retBB);
           phi->addIncoming(ReturnValue, predRet);
           ReturnValue = phi;
         }
-        cast<llvm::PHINode>(ReturnValue)->addIncoming(undef, Builder.GetInsertBlock());
+        cast<llvm::PHINode>(ReturnValue)->addIncoming(val, Builder.GetInsertBlock());
       }
     }
     Builder.CreateBr(retBB);
