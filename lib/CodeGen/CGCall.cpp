@@ -1483,6 +1483,7 @@ void CodeGenFunction::EmitFunctionEpilog(const CGFunctionInfo &FI) {
 
       // If there is a dominating store to ReturnValue, we can elide
       // the load, zap the store, and usually zap the alloca.
+#if 0
       if (llvm::StoreInst *SI = findDominatingStoreToReturnValue(*this)) {
         // Get the stored value and nuke the now-dead store.
         RetDbgLoc = SI->getDebugLoc();
@@ -1497,7 +1498,9 @@ void CodeGenFunction::EmitFunctionEpilog(const CGFunctionInfo &FI) {
         }
 
       // Otherwise, we have to do a simple load.
-      } else {
+      } else 
+#endif
+      {
         if (CGM.getCodeGenOpts().SSA == CodeGenOptions::Alloca)
           RV = Builder.CreateLoad(ReturnValue);
         else
