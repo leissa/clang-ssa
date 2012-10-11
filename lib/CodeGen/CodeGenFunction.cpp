@@ -1258,11 +1258,24 @@ removeCyclePhi:
             Phi->replaceAllUsesWith(Res);
             Phi->eraseFromParent();
           }
+#if 0
           if (llvm::PHINode* const OpPhi = dyn_cast<llvm::PHINode>(Res)) {
             llvm::BasicBlock* const OpBB = OpPhi->getParent();
             if (isMature(OpBB) && OpBB->hasNUses(OpPhi->getNumIncomingValues()))
               Res = tryRemoveRedundantPHI(OpPhi);
           }
+#else
+          llvm::TrackingVH<llvm::Value> ResVH(Res);
+          for (llvm::Value::use_iterator UI = Res->use_begin(), UE = Res->use_end(); UI != UE;) {
+            llvm::Value* const U = *UI++;
+            if (llvm::PHINode* const UsePhi = dyn_cast<llvm::PHINode>(U)) {
+              llvm::BasicBlock* const UseBB = UsePhi->getParent();
+              if (isMature(UseBB) && UseBB->hasNUses(UsePhi->getNumIncomingValues()))
+                tryRemoveRedundantPHI(UsePhi);
+            }
+          }
+          Res = ResVH;
+#endif
         }
 
         Visited.erase(BB);
@@ -1423,12 +1436,25 @@ llvm::Value* CodeGenFunction::tryRemoveRedundantPHI(llvm::PHINode* const Phi) {
   ++NumRedundantPhisDestroyed;
   Phi->replaceAllUsesWith(Same);
   Phi->eraseFromParent();
+#if 0
   if (llvm::PHINode* const OpPhi = dyn_cast<llvm::PHINode>(Same)) {
     llvm::BasicBlock* const OpBB = OpPhi->getParent();
     if (isMature(OpBB) && OpBB->hasNUses(OpPhi->getNumIncomingValues()))
       return tryRemoveRedundantPHI(OpPhi);
   }
   return Same;
+#else
+  llvm::TrackingVH<llvm::Value> Res(Same);
+  for (llvm::Value::use_iterator UI = Same->use_begin(), UE = Same->use_end(); UI != UE;) {
+    llvm::Value* const U = *UI++;
+    if (llvm::PHINode* const UsePhi = dyn_cast<llvm::PHINode>(U)) {
+      llvm::BasicBlock* const UseBB = UsePhi->getParent();
+      if (isMature(UseBB) && UseBB->hasNUses(UsePhi->getNumIncomingValues()))
+        tryRemoveRedundantPHI(UsePhi);
+    }
+  }
+  return Res;
+#endif
 }
 
 llvm::Value* CodeGenFunction::fixPHI(llvm::BasicBlock* BB, const ValueDecl* Var, llvm::PHINode* Phi) {
