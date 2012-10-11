@@ -1182,13 +1182,17 @@ llvm::Value *CodeGenFunction::EmitFieldAnnotations(const FieldDecl *D,
 STATISTIC(NumRedundantPhisDestroyed, "Number of redundant phis destroyed");
 STATISTIC(NumPhis, "Number of phis inserted");
 
-llvm::PHINode* CodeGenFunction::newPhi(llvm::BasicBlock* const BB, ValueDecl const* const Var)
-{
+llvm::PHINode* CodeGenFunction::newPhi(llvm::BasicBlock* const BB, ValueDecl const* const Var) {
   ++NumPhis;
   llvm::Type*    const Type = ConvertType(Var->getType());
-  return BB->empty() ?
+  llvm::PHINode* phi = BB->empty() ?
     llvm::PHINode::Create(Type, 0, Var->getName(), BB) :
     llvm::PHINode::Create(Type, 0, Var->getName(), BB->begin());
+
+  if (phi->getName() == "i3_subst_into_i23275")
+    asm("int3");
+
+  return phi;
 }
 
 llvm::Value* CodeGenFunction::getValue(llvm::BasicBlock* BB, const ValueDecl* Var) {
@@ -1215,9 +1219,11 @@ llvm::Value* CodeGenFunction::getValue(llvm::BasicBlock* BB, const ValueDecl* Va
       break;
 
     case CodeGenOptions::Marker:
-      if (Visited.find(BB) != Visited.end()) {
+      if (llvm::BasicBlock* pred = BB->getSinglePredecessor())
+        Res = getValue(pred, Var);
+      else if (Visited.find(BB) != Visited.end())
         Res = newPhi(BB, Var);
-      } else {
+      else {
         Visited.insert(BB);
 
         llvm::Value* Same = 0;
