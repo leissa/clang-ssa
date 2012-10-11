@@ -753,7 +753,7 @@ void CodeGenFunction::EmitReturnStmt(const ReturnStmt &S) {
     if (RV)
       EmitAnyExpr(RV);
   } else if (RV == 0) {
-    if (!hasAggregateLLVMType(FnRetTy)) {
+    if (useReturnSSA(FnRetTy)) {
       retval = llvm::UndefValue::get(ConvertType(FnRetTy));
       goto return_scalar;
     }
@@ -763,19 +763,22 @@ void CodeGenFunction::EmitReturnStmt(const ReturnStmt &S) {
     RValue Result = EmitReferenceBindingToExpr(RV, /*InitializedDecl=*/0);
     Builder.CreateStore(Result.getScalarVal(), ReturnValue);
   } else if (!hasAggregateLLVMType(RV->getType())) {
-    //Builder.CreateStore(EmitScalarExpr(RV), ReturnValue);
-    retval = EmitScalarExpr(RV);
-return_scalar:
-    llvm::BasicBlock* retBB = ReturnBlock.getBlock();
-    if (!ReturnValue)
-      ReturnValue = retval;
+    if (CGM.getCodeGenOpts().SSA == CodeGenOptions::Alloca)
+      Builder.CreateStore(EmitScalarExpr(RV), ReturnValue);
     else {
-      if (llvm::BasicBlock* predRet = retBB->getSinglePredecessor()) {
-        llvm::PHINode* phi = llvm::PHINode::Create(retval->getType(), 0, "retval", retBB);
-        phi->addIncoming(ReturnValue, predRet);
-        ReturnValue = phi;
+      retval = EmitScalarExpr(RV);
+return_scalar:
+      llvm::BasicBlock* retBB = ReturnBlock.getBlock();
+      if (!ReturnValue)
+        ReturnValue = retval;
+      else {
+        if (llvm::BasicBlock* predRet = retBB->getSinglePredecessor()) {
+          llvm::PHINode* phi = llvm::PHINode::Create(retval->getType(), 0, "retval", retBB);
+          phi->addIncoming(ReturnValue, predRet);
+          ReturnValue = phi;
+        }
+        cast<llvm::PHINode>(ReturnValue)->addIncoming(retval, Builder.GetInsertBlock());
       }
-      cast<llvm::PHINode>(ReturnValue)->addIncoming(retval, Builder.GetInsertBlock());
     }
   } else if (RV->getType()->isAnyComplexType()) {
     EmitComplexExprIntoAddr(RV, ReturnValue, false);

@@ -1538,6 +1538,7 @@ public:
   /// hasAggregateLLVMType - Return true if the specified AST type will map into
   /// an aggregate LLVM type or is void.
   static bool hasAggregateLLVMType(QualType T);
+  bool useReturnSSA(QualType T);
 
   /// createBasicBlock - Create an LLVM basic block.
   llvm::BasicBlock *createBasicBlock(StringRef name = "",

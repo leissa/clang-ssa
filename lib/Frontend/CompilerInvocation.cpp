@@ -24,6 +24,7 @@
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringExtras.h"
 #include "llvm/ADT/StringSwitch.h"
+#include "llvm/ADT/Statistic.h"
 #include "llvm/ADT/Triple.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/Host.h"
@@ -1066,6 +1067,7 @@ static bool ParseMigratorArgs(MigratorOptions &Opts, ArgList &Args) {
 
 static bool ParseCodeGenArgs(CodeGenOptions &Opts, ArgList &Args, InputKind IK,
                              DiagnosticsEngine &Diags) {
+  llvm::EnableStatistics();
   using namespace cc1options;
   bool Success = true;
 

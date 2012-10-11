@@ -64,6 +64,10 @@ llvm::Type *CodeGenFunction::ConvertType(QualType T) {
   return CGM.getTypes().ConvertType(T);
 }
 
+bool CodeGenFunction::useReturnSSA(QualType T) {
+  return CGM.getCodeGenOpts().SSA != CodeGenOptions::Alloca && !hasAggregateLLVMType(T);
+}
+
 bool CodeGenFunction::hasAggregateLLVMType(QualType type) {
   switch (type.getCanonicalType()->getTypeClass()) {
 #define TYPE(name, parent)
@@ -120,7 +124,7 @@ void CodeGenFunction::EmitReturnBlock() {
 
     llvm::BasicBlock* retBB = ReturnBlock.getBlock();
 
-    if (!hasAggregateLLVMType(FnRetTy)) {
+    if (useReturnSSA(FnRetTy)) {
       if (!ReturnValue)
         ReturnValue = val;
       else {
@@ -362,7 +366,7 @@ void CodeGenFunction::StartFunction(GlobalDecl GD, QualType RetTy,
     // This reduces code size, and affects correctness in C++.
     ReturnValue = CurFn->arg_begin();
   } else {
-    ReturnValue = hasAggregateLLVMType(CurFnInfo->getReturnType()) ? CreateIRTemp(RetTy, "retval") : 0;
+    ReturnValue = useReturnSSA(CurFnInfo->getReturnType()) ? 0 : CreateIRTemp(RetTy, "retval");
 
     // Tell the epilog emitter to autorelease the result.  We do this
     // now so that various specialized functions can suppress it
@@ -1244,6 +1248,7 @@ llvm::Value* CodeGenFunction::getValue(llvm::BasicBlock* BB, const ValueDecl* Va
           Res = Same;
 removeCyclePhi:
           if (Phi) {
+            ++NumRedundantPhisDestroyed;
             Phi->replaceAllUsesWith(Res);
             Phi->eraseFromParent();
           }
