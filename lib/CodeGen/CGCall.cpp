@@ -1491,8 +1491,9 @@ void CodeGenFunction::EmitFunctionEpilog(const CGFunctionInfo &FI) {
 
         // If that was the only use of the return value, nuke it as well now.
         if (ReturnValue->use_empty() && isa<llvm::AllocaInst>(ReturnValue)) {
-          cast<llvm::AllocaInst>(ReturnValue)->eraseFromParent();
+          llvm::Value* cur = ReturnValue;
           ReturnValue = 0;
+          cast<llvm::AllocaInst>(cur)->eraseFromParent();
         }
 
       // Otherwise, we have to do a simple load.
