@@ -26,6 +26,7 @@
 #include "llvm/Support/CFG.h"
 #include "llvm/Support/MDBuilder.h"
 #include "llvm/Target/TargetData.h"
+#include "llvm/ADT/Statistic.h"
 using namespace clang;
 using namespace CodeGen;
 
@@ -1173,8 +1174,12 @@ llvm::Value *CodeGenFunction::EmitFieldAnnotations(const FieldDecl *D,
   return V;
 }
 
+STATISTIC(NumRedundantPhisDestroyed, "Number of redundant phis destroyed");
+STATISTIC(NumPhis, "Number of phis inserted");
+
 llvm::PHINode* CodeGenFunction::newPhi(llvm::BasicBlock* const BB, ValueDecl const* const Var)
 {
+  ++NumPhis;
   llvm::Type*    const Type = ConvertType(Var->getType());
   return BB->empty() ?
     llvm::PHINode::Create(Type, 0, Var->getName(), BB) :
@@ -1404,6 +1409,7 @@ llvm::Value* CodeGenFunction::tryRemoveRedundantPHI(llvm::PHINode* const Phi) {
   }
   if (!Same)
     Same = llvm::UndefValue::get(Phi->getType());
+  ++NumRedundantPhisDestroyed;
   Phi->replaceAllUsesWith(Same);
   Phi->eraseFromParent();
   if (llvm::PHINode* const OpPhi = dyn_cast<llvm::PHINode>(Same)) {
