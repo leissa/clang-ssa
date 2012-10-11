@@ -15,6 +15,7 @@
 #include "clang/Frontend/FrontendDiagnostic.h"
 #include "llvm/Module.h"
 #include "llvm/PassManager.h"
+#include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/Verifier.h"
 #include "llvm/Assembly/PrintModulePass.h"
 #include "llvm/Bitcode/ReaderWriter.h"
@@ -180,6 +181,7 @@ void EmitAssemblyHelper::CreatePasses() {
   if (!CodeGenOpts.SimplifyLibCalls)
     PMBuilder.LibraryInfo->disableAllFunctions();
   
+#if 0
   switch (Inlining) {
   case CodeGenOptions::NoInlining: break;
   case CodeGenOptions::NormalInlining: {
@@ -203,13 +205,21 @@ void EmitAssemblyHelper::CreatePasses() {
       PMBuilder.Inliner = createAlwaysInlinerPass();
     break;
   }
+#endif
 
  
   // Set up the per-function pass manager.
   FunctionPassManager *FPM = getPerFunctionPasses();
+#if 0
   if (CodeGenOpts.VerifyModule)
     FPM->add(createVerifierPass());
+#endif
+#if 0
   PMBuilder.populateFunctionPassManager(*FPM);
+#else
+	FPM->add(createPromoteMemoryToRegisterPass());
+	//FPM->add(createDeadCodeEliminationPass());
+#endif
 
   // Set up the per-module pass manager.
   PassManager *MPM = getPerModulePasses();
@@ -396,6 +406,39 @@ bool EmitAssemblyHelper::AddEmitPasses(BackendAction Action,
   return true;
 }
 
+static void CountInstructions(Module& M, char const* const when)
+{
+	unsigned NInsn   = 0;
+	unsigned NAlloca = 0;
+	unsigned NLoad   = 0;
+	unsigned NStore  = 0;
+	unsigned NPHI    = 0;
+	for (Module::iterator MI = M.begin(), ME = M.end(); MI != ME; ++MI) {
+		Function& F = *MI;
+		for (Function::iterator FI = F.begin(), FE = F.end(); FI != FE; ++FI) {
+			BasicBlock& BB = *FI;
+			for (BasicBlock::iterator BBI = BB.begin(), BBE = BB.end(); BBI != BBE; ++BBI) {
+				Instruction& I = *BBI;
+				++NInsn;
+				switch (I.getOpcode()) {
+				case Instruction::Alloca: ++NAlloca; break;
+				case Instruction::Load:   ++NLoad;   break;
+				case Instruction::Store:  ++NStore;  break;
+				case Instruction::PHI:    ++NPHI;    break;
+				}
+			}
+		}
+	}
+
+	llvm::errs()
+		<< "instruction count after " << when << ":\n"
+		<< "all    " << NInsn   << '\n'
+		<< "alloca " << NAlloca << '\n'
+		<< "load   " << NLoad   << '\n'
+		<< "store  " << NStore  << '\n'
+		<< "phi    " << NPHI    << '\n';
+}
+
 void EmitAssemblyHelper::EmitAssembly(BackendAction Action, raw_ostream *OS) {
   TimeRegion Region(llvm::TimePassesIsEnabled ? &CodeGenerationTime : 0);
   llvm::formatted_raw_ostream FormattedOS;
@@ -426,6 +469,10 @@ void EmitAssemblyHelper::EmitAssembly(BackendAction Action, raw_ostream *OS) {
   // Run passes. For now we do all passes at once, but eventually we
   // would like to have the option of streaming code generation.
 
+  llvm::EnableStatistics();
+
+  CountInstructions(*TheModule, "IR construction");
+
   if (PerFunctionPasses) {
     PrettyStackTraceString CrashInfo("Per-function optimization");
 
@@ -436,6 +483,8 @@ void EmitAssemblyHelper::EmitAssembly(BackendAction Action, raw_ostream *OS) {
         PerFunctionPasses->run(*I);
     PerFunctionPasses->doFinalization();
   }
+
+  CountInstructions(*TheModule, "mem2reg");
 
   if (PerModulePasses) {
     PrettyStackTraceString CrashInfo("Per-module optimization passes");
