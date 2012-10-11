@@ -1189,9 +1189,6 @@ llvm::PHINode* CodeGenFunction::newPhi(llvm::BasicBlock* const BB, ValueDecl con
     llvm::PHINode::Create(Type, 0, Var->getName(), BB) :
     llvm::PHINode::Create(Type, 0, Var->getName(), BB->begin());
 
-  if (phi->getName() == "i3_subst_into_i23275")
-    asm("int3");
-
   return phi;
 }
 
