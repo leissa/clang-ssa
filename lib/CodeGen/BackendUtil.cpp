@@ -15,7 +15,6 @@
 #include "clang/Frontend/FrontendDiagnostic.h"
 #include "llvm/Module.h"
 #include "llvm/PassManager.h"
-#include "llvm/ADT/Statistic.h"
 #include "llvm/Analysis/Verifier.h"
 #include "llvm/Assembly/PrintModulePass.h"
 #include "llvm/Bitcode/ReaderWriter.h"
@@ -468,8 +467,6 @@ void EmitAssemblyHelper::EmitAssembly(BackendAction Action, raw_ostream *OS) {
 
   // Run passes. For now we do all passes at once, but eventually we
   // would like to have the option of streaming code generation.
-
-  llvm::EnableStatistics();
 
   CountInstructions(*TheModule, "IR construction");
 
