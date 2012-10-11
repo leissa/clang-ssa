@@ -1227,6 +1227,8 @@ llvm::Value* CodeGenFunction::getValue(llvm::BasicBlock* BB, const ValueDecl* Va
         for (llvm::pred_iterator i = llvm::pred_begin(BB), e = llvm::pred_end(BB); i != e; ++i) {
           llvm::BasicBlock* const Pred = *i;
           llvm::Value*      const Val  = getValue(Pred, Var);
+          if (Pred->use_empty())
+            continue;
           if (Val == Same)
             continue;
           // do we see our own Phi?
