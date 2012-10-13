@@ -1193,8 +1193,8 @@ llvm::PHINode* CodeGenFunction::newPhi(llvm::BasicBlock* const BB, ValueDecl con
 }
 
 llvm::Value* CodeGenFunction::getValue(llvm::BasicBlock* BB, const ValueDecl* Var) {
-  BB2Val&                VarMap = Values[Var];
-  BB2Val::iterator const i      = VarMap.find(BB);
+  ValueDecl::BB2Val&                VarMap = Var->Values;
+  ValueDecl::BB2Val::iterator const i      = VarMap.find(BB);
   if (i != VarMap.end())
     return i->second;
 
@@ -1218,10 +1218,10 @@ llvm::Value* CodeGenFunction::getValue(llvm::BasicBlock* BB, const ValueDecl* Va
     case CodeGenOptions::Marker:
       if (llvm::BasicBlock* pred = BB->getSinglePredecessor())
         Res = getValue(pred, Var);
-      else if (Visited.find(BB) != Visited.end())
+      else if (BB->Visited)
         Res = newPhi(BB, Var);
       else {
-        Visited.insert(BB);
+        BB->Visited = true;
 
         llvm::Value* Same = 0;
         for (llvm::pred_iterator i = llvm::pred_begin(BB), e = llvm::pred_end(BB); i != e; ++i) {
@@ -1232,7 +1232,7 @@ llvm::Value* CodeGenFunction::getValue(llvm::BasicBlock* BB, const ValueDecl* Va
           if (Val == Same)
             continue;
           // do we see our own Phi?
-          BB2Val::iterator const k = VarMap.find(BB);
+          ValueDecl::BB2Val::iterator const k = VarMap.find(BB);
           if (k != VarMap.end() && Val == k->second)
             continue;
           Same = Same ? (llvm::Value*)-1 : Val;
@@ -1258,7 +1258,7 @@ removeCyclePhi:
             Phi->replaceAllUsesWith(Res);
             Phi->eraseFromParent();
           }
-#if 0
+#if 1
           if (llvm::PHINode* const OpPhi = dyn_cast<llvm::PHINode>(Res)) {
             llvm::BasicBlock* const OpBB = OpPhi->getParent();
             if (isMature(OpBB) && OpBB->hasNUses(OpPhi->getNumIncomingValues()))
@@ -1278,13 +1278,13 @@ removeCyclePhi:
 #endif
         }
 
-        Visited.erase(BB);
+        BB->Visited = false;
       }
       break;
 
     case CodeGenOptions::SCC: {
       SCCCounter = 0;
-      Res = WalkSCC(Var, Values[Var], BB);
+      Res = WalkSCC(Var, Var->Values, BB);
       break;
     }
 
@@ -1296,10 +1296,10 @@ removeCyclePhi:
   return Res;
 }
 
-llvm::Value* CodeGenFunction::WalkSCC(const ValueDecl* Var, BB2Val& VarMap, llvm::BasicBlock* BB) {
+llvm::Value* CodeGenFunction::WalkSCC(const ValueDecl* Var, ValueDecl::BB2Val& VarMap, llvm::BasicBlock* BB) {
   llvm::errs() << Var->getName() << '\n';
   {
-    BB2Val::iterator i = VarMap.find(BB);
+    ValueDecl::BB2Val::iterator i = VarMap.find(BB);
     if (i != VarMap.end())
       return i->second;
   }
@@ -1347,7 +1347,7 @@ llvm::Value* CodeGenFunction::WalkSCC(const ValueDecl* Var, BB2Val& VarMap, llvm
       for (;;) {
         llvm::BasicBlock* const Cur = *--i;
         for (llvm::pred_iterator k = pred_begin(Cur), e = pred_end(Cur); k != e; ++k) {
-          BB2Val::iterator const ValIter = VarMap.find(*k);
+          ValueDecl::BB2Val::iterator const ValIter = VarMap.find(*k);
           if (ValIter == VarMap.end())
             continue;
           llvm::Value* const Val = ValIter->second;
@@ -1357,7 +1357,7 @@ llvm::Value* CodeGenFunction::WalkSCC(const ValueDecl* Var, BB2Val& VarMap, llvm
             for (BBStack::iterator i = SCCStack.end();;) {
               llvm::BasicBlock* const Cur = *--i;
               for (llvm::pred_iterator k = pred_begin(Cur), e = pred_end(Cur); k != e; ++k) {
-                BB2Val::iterator const ValIter = VarMap.find(*k);
+                ValueDecl::BB2Val::iterator const ValIter = VarMap.find(*k);
                 if (ValIter == VarMap.end())
                   continue;
 
@@ -1418,7 +1418,7 @@ void CodeGenFunction::setMature(llvm::BasicBlock* BB) {
   for (Var2Phi::iterator i = Phis.begin(), e = Phis.end(); i != e; ++i)
       fixPHI(BB, i->first, i->second);
 
-  Mature.insert(BB);
+  BB->Mature = true;
 }
 
 llvm::Value* CodeGenFunction::tryRemoveRedundantPHI(llvm::PHINode* const Phi) {
@@ -1436,7 +1436,7 @@ llvm::Value* CodeGenFunction::tryRemoveRedundantPHI(llvm::PHINode* const Phi) {
   ++NumRedundantPhisDestroyed;
   Phi->replaceAllUsesWith(Same);
   Phi->eraseFromParent();
-#if 0
+#if 1
   if (llvm::PHINode* const OpPhi = dyn_cast<llvm::PHINode>(Same)) {
     llvm::BasicBlock* const OpBB = OpPhi->getParent();
     if (isMature(OpBB) && OpBB->hasNUses(OpPhi->getNumIncomingValues()))

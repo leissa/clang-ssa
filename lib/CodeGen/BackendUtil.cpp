@@ -216,7 +216,7 @@ void EmitAssemblyHelper::CreatePasses() {
 #if 0
   PMBuilder.populateFunctionPassManager(*FPM);
 #else
-	FPM->add(createPromoteMemoryToRegisterPass());
+    //FPM->add(createPromoteMemoryToRegisterPass());
 	//FPM->add(createDeadCodeEliminationPass());
 #endif
 
@@ -468,7 +468,7 @@ void EmitAssemblyHelper::EmitAssembly(BackendAction Action, raw_ostream *OS) {
   // Run passes. For now we do all passes at once, but eventually we
   // would like to have the option of streaming code generation.
 
-  CountInstructions(*TheModule, "IR construction");
+  //CountInstructions(*TheModule, "IR construction");
 
   if (PerFunctionPasses) {
     PrettyStackTraceString CrashInfo("Per-function optimization");
@@ -481,7 +481,7 @@ void EmitAssemblyHelper::EmitAssembly(BackendAction Action, raw_ostream *OS) {
     PerFunctionPasses->doFinalization();
   }
 
-  CountInstructions(*TheModule, "mem2reg");
+  //CountInstructions(*TheModule, "mem2reg");
 
   if (PerModulePasses) {
     PrettyStackTraceString CrashInfo("Per-module optimization passes");

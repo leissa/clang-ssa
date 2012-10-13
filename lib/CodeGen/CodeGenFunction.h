@@ -562,17 +562,9 @@ public:
   CodeGenModule &CGM;  // Per-module state.
   const TargetInfo &Target;
 
-  typedef llvm::DenseMap<llvm::BasicBlock*, llvm::TrackingVH<llvm::Value> > BB2Val;
-  typedef llvm::DenseMap<const ValueDecl*, BB2Val> Var2BB2Val;
-  Var2BB2Val Values;
-
   typedef llvm::DenseMap<const ValueDecl*, llvm::PHINode*> Var2Phi;
   typedef llvm::DenseMap<llvm::BasicBlock*, Var2Phi> BB2Var2Phi;
   BB2Var2Phi Todos;
-
-  typedef llvm::DenseSet<llvm::BasicBlock*> BBs;
-  BBs Mature;
-  BBs Visited;
 
   typedef std::vector<llvm::BasicBlock*> BBStack;
   BBStack SCCStack;
@@ -589,15 +581,15 @@ public:
   BB2BlockID SCC;
   size_t SCCCounter;
 
-  llvm::Value* WalkSCC(const ValueDecl* Var, BB2Val& values, llvm::BasicBlock* BB);
+  llvm::Value* WalkSCC(const ValueDecl* Var, ValueDecl::BB2Val& values, llvm::BasicBlock* BB);
 
   void setValue(llvm::BasicBlock* BB, const ValueDecl* Var, llvm::Value* NewVal) {
-    Values[Var][BB] = NewVal;
+    Var->Values[BB] = NewVal;
   }
   void setValue(const ValueDecl* Var, llvm::Value* NewVal) {
     setValue(Builder.GetInsertBlock(), Var, NewVal);
   }
-  bool isMature(llvm::BasicBlock* const BB) { return Mature.find(BB) != Mature.end(); }
+  bool isMature(llvm::BasicBlock* const BB) { return BB->Mature; }
   void setMature(llvm::BasicBlock* BB);
 
   llvm::PHINode* newPhi(llvm::BasicBlock* BB, ValueDecl const* Var);
@@ -609,7 +601,7 @@ public:
   llvm::Value* fixPHI(llvm::BasicBlock* BB, const ValueDecl* Var, llvm::PHINode* Phi);
 
   void eraseBB(llvm::BasicBlock* const BB) {
-    Mature.erase(BB);
+    BB->Mature = false;
     BB->eraseFromParent();
   }
 

@@ -1067,7 +1067,7 @@ static bool ParseMigratorArgs(MigratorOptions &Opts, ArgList &Args) {
 
 static bool ParseCodeGenArgs(CodeGenOptions &Opts, ArgList &Args, InputKind IK,
                              DiagnosticsEngine &Diags) {
-  llvm::EnableStatistics();
+  //llvm::EnableStatistics();
   using namespace cc1options;
   bool Success = true;
 

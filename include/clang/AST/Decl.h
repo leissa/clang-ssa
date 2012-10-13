@@ -23,6 +23,7 @@
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/Optional.h"
 #include "llvm/Support/Compiler.h"
+#include "llvm/Support/ValueHandle.h"
 
 namespace clang {
 class CXXTemporary;
@@ -551,6 +552,9 @@ public:
   static bool classof(const Decl *D) { return classofKind(D->getKind()); }
   static bool classof(const ValueDecl *D) { return true; }
   static bool classofKind(Kind K) { return K >= firstValue && K <= lastValue; }
+
+  typedef llvm::DenseMap<llvm::BasicBlock*, llvm::TrackingVH<llvm::Value> > BB2Val;
+  mutable BB2Val Values;
 };
 
 /// QualifierInfo - A struct with extended info about a syntactic
