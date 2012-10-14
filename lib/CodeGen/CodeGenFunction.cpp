@@ -1284,32 +1284,7 @@ removeCyclePhi:
               Res = tryRemoveRedundantPHI(OpPhi);
           }
 #else
-  llvm::TrackingVH<llvm::Value> ResVH(Res);
-
-  std::vector<llvm::TrackingVH<llvm::Value> > uses;
-  for (llvm::Value::use_iterator UI = Res->use_begin(), UE = Res->use_end(); UI != UE; ++UI)
-    uses.push_back(*UI);
-
-  for (size_t i = 0, e = uses.size(); i != e; ++i) {
-    llvm::Value* const U = uses[i];
-    if (llvm::PHINode* const UsePhi = dyn_cast<llvm::PHINode>(U)) {
-      llvm::BasicBlock* const UseBB = UsePhi->getParent();
-      if (isMature(UseBB) && UseBB->hasNUses(UsePhi->getNumIncomingValues()))
-        tryRemoveRedundantPHI(UsePhi);
-    }
-  }
-  Res = ResVH;
-
-          //llvm::TrackingVH<llvm::Value> ResVH(Res);
-          //for (llvm::Value::use_iterator UI = Res->use_begin(), UE = Res->use_end(); UI != UE;) {
-            //llvm::Value* const U = *UI++;
-            //if (llvm::PHINode* const UsePhi = dyn_cast<llvm::PHINode>(U)) {
-              //llvm::BasicBlock* const UseBB = UsePhi->getParent();
-              //if (isMature(UseBB) && UseBB->hasNUses(UsePhi->getNumIncomingValues()))
-                //tryRemoveRedundantPHI(UsePhi);
-            //}
-          //}
-          //Res = ResVH;
+          Res = recursePHI(Res);
 #endif
         }
 
@@ -1480,35 +1455,7 @@ llvm::Value* CodeGenFunction::tryRemoveRedundantPHI(llvm::PHINode* const Phi) {
   }
   return Same;
 #else
-
-  llvm::TrackingVH<llvm::Value> Res(Same);
-
-  std::vector<llvm::TrackingVH<llvm::Value> > uses;
-  for (llvm::Value::use_iterator UI = Same->use_begin(), UE = Same->use_end(); UI != UE; ++UI)
-    uses.push_back(*UI);
-
-  for (size_t i = 0, e = uses.size(); i != e; ++i) {
-    llvm::Value* const U = uses[i];
-    if (llvm::PHINode* const UsePhi = dyn_cast<llvm::PHINode>(U)) {
-      llvm::BasicBlock* const UseBB = UsePhi->getParent();
-      if (isMature(UseBB) && UseBB->hasNUses(UsePhi->getNumIncomingValues()))
-        tryRemoveRedundantPHI(UsePhi);
-    }
-  }
-  return Res;
-
-#if 0
-  llvm::TrackingVH<llvm::Value> Res(Same);
-  for (llvm::Value::use_iterator UI = Same->use_begin(), UE = Same->use_end(); UI != UE;) {
-    llvm::Value* const U = *UI++;
-    if (llvm::PHINode* const UsePhi = dyn_cast<llvm::PHINode>(U)) {
-      llvm::BasicBlock* const UseBB = UsePhi->getParent();
-      if (isMature(UseBB) && UseBB->hasNUses(UsePhi->getNumIncomingValues()))
-        tryRemoveRedundantPHI(UsePhi);
-    }
-  }
-#endif
-  return Res;
+  return recursePHI(Same);
 #endif
 }
 
