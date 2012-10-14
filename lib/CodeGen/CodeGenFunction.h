@@ -592,13 +592,14 @@ public:
   bool isMature(llvm::BasicBlock* const BB) { return BB->Mature; }
   void setMature(llvm::BasicBlock* BB);
 
-  llvm::PHINode* newPhi(llvm::BasicBlock* BB, ValueDecl const* Var);
+  llvm::PHINode* newPHI(llvm::BasicBlock* BB, ValueDecl const* Var);
   llvm::Value* getValue(llvm::BasicBlock* BB, const ValueDecl* Var);
   llvm::Value* getValue(const ValueDecl* Var) { 
     return getValue(Builder.GetInsertBlock(), Var);
   }
   llvm::Value* tryRemoveRedundantPHI(llvm::PHINode* Phi);
   llvm::Value* fixPHI(llvm::BasicBlock* BB, const ValueDecl* Var, llvm::PHINode* Phi);
+  llvm::Value* recursePHI(llvm::Value* value);
 
   void eraseBB(llvm::BasicBlock* const BB) {
     BB->Mature = false;

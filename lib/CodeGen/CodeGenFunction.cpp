@@ -1182,7 +1182,7 @@ llvm::Value *CodeGenFunction::EmitFieldAnnotations(const FieldDecl *D,
 STATISTIC(NumRedundantPhisDestroyed, "Number of redundant phis destroyed");
 STATISTIC(NumPhis, "Number of phis inserted");
 
-llvm::PHINode* CodeGenFunction::newPhi(llvm::BasicBlock* const BB, ValueDecl const* const Var) {
+llvm::PHINode* CodeGenFunction::newPHI(llvm::BasicBlock* const BB, ValueDecl const* const Var) {
   ++NumPhis;
   llvm::Type*    const Type = ConvertType(Var->getType());
   llvm::PHINode* phi = BB->empty() ?
@@ -1190,6 +1190,25 @@ llvm::PHINode* CodeGenFunction::newPhi(llvm::BasicBlock* const BB, ValueDecl con
     llvm::PHINode::Create(Type, 0, Var->getName(), BB->begin());
 
   return phi;
+}
+
+llvm::Value* CodeGenFunction::recursePHI(llvm::Value *Value) {
+  llvm::TrackingVH<llvm::Value> Res(Value);
+
+  std::vector<llvm::TrackingVH<llvm::Value> > uses;
+  for (llvm::Value::use_iterator UI = Res->use_begin(), UE = Res->use_end(); UI != UE; ++UI)
+    uses.push_back(*UI);
+
+  for (size_t i = 0, e = uses.size(); i != e; ++i) {
+    llvm::Value* const U = uses[i];
+    if (llvm::PHINode* const UsePhi = dyn_cast<llvm::PHINode>(U)) {
+      llvm::BasicBlock* const UseBB = UsePhi->getParent();
+      if (isMature(UseBB) && UseBB->hasNUses(UsePhi->getNumIncomingValues()))
+        tryRemoveRedundantPHI(UsePhi);
+    }
+  }
+
+  return Res;
 }
 
 llvm::Value* CodeGenFunction::getValue(llvm::BasicBlock* BB, const ValueDecl* Var) {
@@ -1200,7 +1219,7 @@ llvm::Value* CodeGenFunction::getValue(llvm::BasicBlock* BB, const ValueDecl* Va
 
   llvm::Value* Res;
   if (!isMature(BB)) {
-    llvm::PHINode* const Phi = newPhi(BB, Var);
+    llvm::PHINode* const Phi = newPHI(BB, Var);
     Todos[BB][Var] = Phi;
     Res = Phi;
   } else {
@@ -1209,7 +1228,7 @@ llvm::Value* CodeGenFunction::getValue(llvm::BasicBlock* BB, const ValueDecl* Va
       if (llvm::BasicBlock* const SinglePred = BB->getSinglePredecessor()) {
         Res = getValue(SinglePred, Var);
       } else {
-        llvm::PHINode* const Phi = newPhi(BB, Var);
+        llvm::PHINode* const Phi = newPHI(BB, Var);
         setValue(BB, Var, Phi);
         Res = fixPHI(BB, Var, Phi);
       }
@@ -1219,7 +1238,7 @@ llvm::Value* CodeGenFunction::getValue(llvm::BasicBlock* BB, const ValueDecl* Va
       if (llvm::BasicBlock* pred = BB->getSinglePredecessor())
         Res = getValue(pred, Var);
       else if (BB->Visited)
-        Res = newPhi(BB, Var);
+        Res = newPHI(BB, Var);
       else {
         BB->Visited = true;
 
@@ -1244,7 +1263,7 @@ llvm::Value* CodeGenFunction::getValue(llvm::BasicBlock* BB, const ValueDecl* Va
           goto removeCyclePhi;
         } else if (Same == (llvm::Value*)-1) {
           if (!Phi)
-            Phi = newPhi(BB, Var);
+            Phi = newPHI(BB, Var);
           for (llvm::pred_iterator i = llvm::pred_begin(BB), e = llvm::pred_end(BB); i != e; ++i) {
             llvm::BasicBlock* const Pred = *i;
             Phi->addIncoming(VarMap[Pred], Pred);
@@ -1258,23 +1277,39 @@ removeCyclePhi:
             Phi->replaceAllUsesWith(Res);
             Phi->eraseFromParent();
           }
-#if 1
+#if 0
           if (llvm::PHINode* const OpPhi = dyn_cast<llvm::PHINode>(Res)) {
             llvm::BasicBlock* const OpBB = OpPhi->getParent();
             if (isMature(OpBB) && OpBB->hasNUses(OpPhi->getNumIncomingValues()))
               Res = tryRemoveRedundantPHI(OpPhi);
           }
 #else
-          llvm::TrackingVH<llvm::Value> ResVH(Res);
-          for (llvm::Value::use_iterator UI = Res->use_begin(), UE = Res->use_end(); UI != UE;) {
-            llvm::Value* const U = *UI++;
-            if (llvm::PHINode* const UsePhi = dyn_cast<llvm::PHINode>(U)) {
-              llvm::BasicBlock* const UseBB = UsePhi->getParent();
-              if (isMature(UseBB) && UseBB->hasNUses(UsePhi->getNumIncomingValues()))
-                tryRemoveRedundantPHI(UsePhi);
-            }
-          }
-          Res = ResVH;
+  llvm::TrackingVH<llvm::Value> ResVH(Res);
+
+  std::vector<llvm::TrackingVH<llvm::Value> > uses;
+  for (llvm::Value::use_iterator UI = Res->use_begin(), UE = Res->use_end(); UI != UE; ++UI)
+    uses.push_back(*UI);
+
+  for (size_t i = 0, e = uses.size(); i != e; ++i) {
+    llvm::Value* const U = uses[i];
+    if (llvm::PHINode* const UsePhi = dyn_cast<llvm::PHINode>(U)) {
+      llvm::BasicBlock* const UseBB = UsePhi->getParent();
+      if (isMature(UseBB) && UseBB->hasNUses(UsePhi->getNumIncomingValues()))
+        tryRemoveRedundantPHI(UsePhi);
+    }
+  }
+  Res = ResVH;
+
+          //llvm::TrackingVH<llvm::Value> ResVH(Res);
+          //for (llvm::Value::use_iterator UI = Res->use_begin(), UE = Res->use_end(); UI != UE;) {
+            //llvm::Value* const U = *UI++;
+            //if (llvm::PHINode* const UsePhi = dyn_cast<llvm::PHINode>(U)) {
+              //llvm::BasicBlock* const UseBB = UsePhi->getParent();
+              //if (isMature(UseBB) && UseBB->hasNUses(UsePhi->getNumIncomingValues()))
+                //tryRemoveRedundantPHI(UsePhi);
+            //}
+          //}
+          //Res = ResVH;
 #endif
         }
 
@@ -1361,7 +1396,7 @@ llvm::Value* CodeGenFunction::WalkSCC(const ValueDecl* Var, ValueDecl::BB2Val& V
                 if (ValIter == VarMap.end())
                   continue;
 
-                llvm::PHINode* phi = newPhi(Cur, Var);
+                llvm::PHINode* phi = newPHI(Cur, Var);
                 todo.push_back(phi);
                 setValue(Cur, Var, phi);
                 break;
@@ -1397,7 +1432,7 @@ llvm::Value* CodeGenFunction::WalkSCC(const ValueDecl* Var, ValueDecl::BB2Val& V
       if (Same) {
         Res = Same;
       } else {
-        llvm::PHINode* const Phi = newPhi(BB, Var);
+        llvm::PHINode* const Phi = newPHI(BB, Var);
         for (llvm::pred_iterator i = pred_begin(BB); i != e; ++i) {
           llvm::BasicBlock* const Pred = *i;
           Phi->addIncoming(VarMap[Pred], Pred);
@@ -1436,7 +1471,8 @@ llvm::Value* CodeGenFunction::tryRemoveRedundantPHI(llvm::PHINode* const Phi) {
   ++NumRedundantPhisDestroyed;
   Phi->replaceAllUsesWith(Same);
   Phi->eraseFromParent();
-#if 1
+
+#if 0
   if (llvm::PHINode* const OpPhi = dyn_cast<llvm::PHINode>(Same)) {
     llvm::BasicBlock* const OpBB = OpPhi->getParent();
     if (isMature(OpBB) && OpBB->hasNUses(OpPhi->getNumIncomingValues()))
@@ -1444,6 +1480,24 @@ llvm::Value* CodeGenFunction::tryRemoveRedundantPHI(llvm::PHINode* const Phi) {
   }
   return Same;
 #else
+
+  llvm::TrackingVH<llvm::Value> Res(Same);
+
+  std::vector<llvm::TrackingVH<llvm::Value> > uses;
+  for (llvm::Value::use_iterator UI = Same->use_begin(), UE = Same->use_end(); UI != UE; ++UI)
+    uses.push_back(*UI);
+
+  for (size_t i = 0, e = uses.size(); i != e; ++i) {
+    llvm::Value* const U = uses[i];
+    if (llvm::PHINode* const UsePhi = dyn_cast<llvm::PHINode>(U)) {
+      llvm::BasicBlock* const UseBB = UsePhi->getParent();
+      if (isMature(UseBB) && UseBB->hasNUses(UsePhi->getNumIncomingValues()))
+        tryRemoveRedundantPHI(UsePhi);
+    }
+  }
+  return Res;
+
+#if 0
   llvm::TrackingVH<llvm::Value> Res(Same);
   for (llvm::Value::use_iterator UI = Same->use_begin(), UE = Same->use_end(); UI != UE;) {
     llvm::Value* const U = *UI++;
@@ -1453,6 +1507,7 @@ llvm::Value* CodeGenFunction::tryRemoveRedundantPHI(llvm::PHINode* const Phi) {
         tryRemoveRedundantPHI(UsePhi);
     }
   }
+#endif
   return Res;
 #endif
 }
